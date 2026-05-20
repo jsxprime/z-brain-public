@@ -11,6 +11,7 @@ Deploy a fully containerized instance of CORE (including the databases and the N
 *   **DNS & Domains:** The base domain for the homelab is `example.com`. The CORE stack is mapped to `core.example.com`.
 *   **Routing & SSL:** Traefik handles SSL termination using Cloudflare DNS validation for dynamic/wildcard certificates (`*.example.com`).
 *   **Installation Model:** Fully containerized via Docker and Docker Compose (Option 2). The host VM should remain clean of direct package installations (Node.js, pnpm, etc.) other than Docker itself.
+*   **Volume Mapping:** Prefer local bind mounts over named Docker volumes for container persistence (e.g., mapping to `./data/...`).
 *   **Security & Overlay Networks:** The stack connects to an external Docker network `agent-net`. In the future, a Pangolin `newt` tunnel container will connect to this network, allowing remote zero-port access to CORE's API/dashboard.
 
 ---
@@ -138,7 +139,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     networks:
       - agent-net
 
@@ -151,8 +152,8 @@ services:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
       NEO4J_PLUGINS: '["apoc"]'
     volumes:
-      - neo4j_data:/data
-      - neo4j_plugins:/plugins
+      - ./data/neo4j:/data
+      - ./data/neo4j-plugins:/plugins
     networks:
       - agent-net
 
@@ -163,15 +164,10 @@ services:
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD}
     volumes:
-      - redis_data:/data
+      - ./data/redis:/data
     networks:
       - agent-net
 
-volumes:
-  postgres_data:
-  neo4j_data:
-  neo4j_plugins:
-  redis_data:
 
 networks:
   agent-net:
