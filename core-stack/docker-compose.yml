@@ -28,6 +28,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - POSTGRES_DB=${POSTGRES_DB}
+      - QUEUE_PROVIDER=bullmq
     depends_on:
       - postgres
       - redis
