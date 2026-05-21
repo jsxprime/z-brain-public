@@ -45,7 +45,7 @@ services:
 
   # Relational Database
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:15-pgvector
     container_name: core-postgres
     restart: unless-stopped
     environment:
