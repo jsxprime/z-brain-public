@@ -12,18 +12,19 @@ COPY core/package.json core/pnpm-lock.yaml* core/pnpm-workspace.yaml* ./
 COPY core/ ./
 RUN pnpm install --frozen-lockfile
 
-# Build application
+# Build application (Filter to only build webapp and its dependencies)
 FROM base AS builder
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY core/ ./
-RUN pnpm build
+RUN npx turbo run build --filter=webapp...
 
 # Runtime stage
 FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-COPY --from=builder /app ./
+COPY --from=builder /app /app
 
+WORKDIR /app/apps/webapp
 EXPOSE 3033
-CMD ["pnpm", "start"]
+CMD ["node", "server.js"]
