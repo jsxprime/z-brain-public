@@ -30,7 +30,7 @@ The deployment runs via isolated Docker Compose stacks on the host VM:
 *All databases use persistent local bind mounts mapped to `~/docker/core-stack/data/*`.*
 
 ### Hermes Agent Stack (`~/docker/hermes-stack/`)
-1.  **`hermes-agent`:** Isolated container for the Hermes Agent gateway. Exposes port `8642:8642` and mounts configurations locally to `./data`. Connected to the external `agent-net` overlay network.
+1.  **`hermes-agent`:** Isolated container for the Hermes Agent gateway. Exposes ports `8642:8642` (API) and `9119:9119` (Dashboard). Mounts configurations locally to `./data` and joins the external `agent-net` overlay network. Features a configured API server and Web UI.
 
 ---
 
