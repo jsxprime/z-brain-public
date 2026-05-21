@@ -8,14 +8,11 @@ WORKDIR /app
 
 # Install dependencies in a separate layer
 FROM base AS dependencies
-COPY core/package.json core/pnpm-lock.yaml* core/pnpm-workspace.yaml* ./
 COPY core/ ./
 RUN pnpm install --frozen-lockfile
 
-# Build application (Filter to only build webapp and its dependencies)
-FROM base AS builder
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY core/ ./
+# Build application (Extend dependencies to preserve nested workspace node_modules)
+FROM dependencies AS builder
 RUN npx turbo run build --filter=webapp...
 
 # Runtime stage
