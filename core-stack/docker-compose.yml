@@ -8,8 +8,10 @@ services:
       dockerfile: ./Dockerfile
     container_name: core-app
     restart: unless-stopped
+    ports:
+      - "3033:3033"
     environment:
-      - PORT=3033
+      - REMIX_APP_PORT=3033
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       - DIRECT_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       - SESSION_SECRET=${SESSION_SECRET}
