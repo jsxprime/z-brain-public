@@ -1,4 +1,4 @@
-version: '3.8'
+# Docker Compose configuration
 
 services:
   # The CORE Web App & Memory Orchestrator
@@ -11,13 +11,23 @@ services:
     environment:
       - PORT=3033
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DIRECT_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      - SESSION_SECRET=${SESSION_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - MAGIC_LINK_SECRET=${MAGIC_LINK_SECRET}
+      - LOGIN_ORIGIN=${LOGIN_ORIGIN}
+      - APP_ORIGIN=${APP_ORIGIN}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_TLS_DISABLED=true
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USERNAME=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - POSTGRES_DB=${POSTGRES_DB}
     depends_on:
       - postgres
       - redis
