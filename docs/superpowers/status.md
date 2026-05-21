@@ -10,20 +10,27 @@ We have successfully deployed the **CORE Memory OS** (`RedPlanetHQ/core`) on the
 
 *   **Host IP:** `YOUR_VM_IP`
 *   **User:** `YOUR_VM_USER`
-*   **Deployment Directory on Host:** `~/docker/core-stack/`
+*   **Deployment Directories on Host:** 
+    *   CORE Stack: `~/docker/core-stack/`
+    *   Hermes Stack: `~/docker/hermes-stack/`
 *   **Access URL (Local Network):** `http://YOUR_VM_IP:3033` (exposes port `3033`)
 
 ---
 
 ## 2. Infrastructure & Services Deployed
 
-The deployment runs via Docker Compose on the host. The services are:
+The deployment runs via isolated Docker Compose stacks on the host VM:
+
+### CORE Memory Stack (`~/docker/core-stack/`)
 1.  **`core-app`:** Remix-based application server. Exposes host port `3033:3033`. Custom build includes a client-side polyfill to allow insecure context API calls.
 2.  **`postgres`:** PostgreSQL 15 running official `pgvector/pgvector:pg15` to enable spatial/vector embeddings.
 3.  **`neo4j`:** Neo4j 5 Community Edition for temporal knowledge graphs.
 4.  **`redis`:** Redis 7 for queue and caching.
 
 *All databases use persistent local bind mounts mapped to `~/docker/core-stack/data/*`.*
+
+### Hermes Agent Stack (`~/docker/hermes-stack/`)
+1.  **`hermes-agent`:** Isolated container for the Hermes Agent gateway. Exposes port `8642:8642` and mounts configurations locally to `./data`. Connected to the external `agent-net` overlay network.
 
 ---
 
