@@ -8,6 +8,12 @@ services:
     command: gateway run
     ports:
       - "8642:8642"
+      - "9119:9119"
+    environment:
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY=hermeskey9876543210
+      - HERMES_DASHBOARD=1
     volumes:
       - ./data:/opt/data
     networks:
