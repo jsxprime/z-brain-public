@@ -64,5 +64,7 @@ When starting the next session, here is the prioritized checklist:
   - Re-adjust `APP_ORIGIN` and `LOGIN_ORIGIN` in `.env` to `https://core.example.com` once the tunnel is active.
 - [ ] **Task 2: Integrate Nate B. Jones' Open Brain (OB1)**
   - Spin up Supabase/pgvector relational structures as a secondary memory/infrastructure layer.
-- [ ] **Task 3: Install Zero Claw and Hermes Agent**
-  - Deploy the agent runner and configure it to talk to the stable CORE API.
+- [x] **Task 3: Install and configure Hermes Agent**
+  - Deployed in isolated stack `~/docker/hermes-stack/`. Exposes gateway API on port `8642`. Configured and verified.
+- [ ] **Task 4: Integrate Zero Claw**
+  - Deploy the Zero Claw runner and configure it to talk to the stable CORE API.
