@@ -4,3 +4,7 @@ node_modules/
 dist/
 build/
 .DS_Store
+
+# SSH keys and directories
+ssh/
+*/ssh/

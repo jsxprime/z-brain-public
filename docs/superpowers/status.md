@@ -1,6 +1,6 @@
 # Superpowers Deployment Status
 
-**Last Updated:** 2026-05-20 (Session 1)
+**Last Updated:** 2026-05-22 (Session 1)
 
 ---
 
@@ -8,6 +8,7 @@
 
 We have successfully deployed the **CORE Memory OS** (`RedPlanetHQ/core`) on the home lab VM. The application and databases are healthy, and the setup flow (butler naming, user creation, workspace seeding) has been completed and verified.
 
+*   **System Name:** This VM host and the running stack (CORE + Hermes Agent) are collectively referred to as **z-brain**.
 *   **Host IP:** `YOUR_VM_IP`
 *   **User:** `YOUR_VM_USER`
 *   **Deployment Directories on Host:** 
@@ -51,6 +52,8 @@ During deployment, the following major blockers were solved:
 2.  **Missing `vector` SQL Extension:** Migrated database container image to `pgvector/pgvector:pg15` and provisioned tables using `npx prisma db push --accept-data-loss`.
 3.  **Cryptographic Key Size Crash (`ERR_CRYPTO_INVALID_KEYLEN`):** Node's `crypto.createCipheriv` with `aes-256-gcm` requires a 32-byte key. The auto-generated key was 64 characters (64 bytes). Truncated the key to 32 characters.
 4.  **Browser Secure Context Crash (`crypto.randomUUID`):** Browser-side Javascript crashed when accessing over insecure HTTP. Added a pseudo-random UUID generator polyfill to `entry.client.tsx` as a fallback.
+5.  **API Server Bind Config (`API_SERVER_HOST`):** Changed the host bind address in the container volume `.env` (`~/docker/hermes-stack/data/.env`) from `127.0.0.1` to `0.0.0.0` so the API server is exposed for host-level routing and tunnels.
+6.  **Agent-to-Host SSH Authentication:** Appended the container's public SSH key (`/opt/data/.ssh/id_ed25519.pub`) to the host VM's `~/.ssh/authorized_keys` to allow the agent to execute terminal tools on the host cleanly without password prompts or host verification warnings.
 
 ---
 
