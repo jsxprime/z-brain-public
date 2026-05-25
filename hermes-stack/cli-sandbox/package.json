@@ -1,0 +1,13 @@
+{
+  "name": "cli-sandbox-bridge",
+  "version": "1.0.0",
+  "description": "WebSocket bridge for interactive PTY sessions",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "ws": "^8.16.0"
+  }
+}

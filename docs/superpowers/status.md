@@ -1,6 +1,8 @@
 # Superpowers Deployment Status
 
-**Last Updated:** 2026-05-22 (Session 1)
+**Last Updated:** 2026-05-24 (Ollama Integration Session)
+
+*Note: Connected Zella (Hermes Agent) to Ollama running on Mac (YOUR_OLLAMA_HOST). Zella now defaults to gemma4:latest via Ollama with Google as fallback. CORE remains on Google (Gemini) — the accidental Ollama additions to CORE have been reverted. OpenBrain SSE transport was fixed to support multiple concurrent MCP clients.*
 
 ---
 
@@ -32,6 +34,10 @@ The deployment runs via isolated Docker Compose stacks on the host VM:
 
 ### Hermes Agent Stack (`~/docker/hermes-stack/`)
 1.  **`hermes-agent`:** Isolated container for the Hermes Agent gateway. Exposes ports `8642:8642` (API) and `9119:9119` (Dashboard). Mounts configurations locally to `./data` and joins the external `agent-net` overlay network. Features a configured API server and Web UI.
+2.  **MCP Plugins**: Configured with `memory`, `z-brain` (via HTTP API), `openbrain` (via SSE), and `github` (via PAT) to give Zella broad API-level access to the environment.
+
+### OpenBrain Stack (`~/docker/openbrain-server/` or local `scratch/openbrain-server/`)
+1.  **`openbrain-server`:** Node.js Express server running an MCP SSE transport layer on port `3040`. Facilitates `gemini-embedding-2` vector storage into `core_brain` Postgres.
 
 ---
 
@@ -54,6 +60,17 @@ During deployment, the following major blockers were solved:
 4.  **Browser Secure Context Crash (`crypto.randomUUID`):** Browser-side Javascript crashed when accessing over insecure HTTP. Added a pseudo-random UUID generator polyfill to `entry.client.tsx` as a fallback.
 5.  **API Server Bind Config (`API_SERVER_HOST`):** Changed the host bind address in the container volume `.env` (`~/docker/hermes-stack/data/.env`) from `127.0.0.1` to `0.0.0.0` so the API server is exposed for host-level routing and tunnels.
 6.  **Agent-to-Host SSH Authentication:** Appended the container's public SSH key (`/opt/data/.ssh/id_ed25519.pub`) to the host VM's `~/.ssh/authorized_keys` to allow the agent to execute terminal tools on the host cleanly without password prompts or host verification warnings.
+7.  **OpenBrain Embedding Size Mismatch:** Encountered dimensionality mismatch where Gemini returned 3072 dimensions, but the Postgres schema expected `vector(768)`. Resolved by explicitly slicing the tensor via Javascript in the `ingest-docs.js` pipeline to precisely `768`.
+8.  **Claude Code Proxy Integration:** Fixed the custom `cli_router` plugin in Hermes Agent to correctly use the `PluginContext.register_tool` schemas and `pre_gateway_dispatch` hook.
+9.  **Headless Authentication Sync:** Injected the long-lived `sk-ant-oat01` Claude Pro OAuth token via host Docker volumes directly into the `cli-sandbox` Ubuntu container environment to bypass interactive browser limits.
+10. **Hermes Agent Iteration Rate Limit:** Diagnosed 2,000,000 TPM Gemini API rate limits occurring due to the Telegram session file bloating to 1.5MB after the agent hit a 90-iteration internal safety loop while attempting to patch plugins. Advised `/reset` command to purge context.
+
+---
+
+## 5. Artifacts and Tooling Added
+
+1.  **Docs-as-Code Pipeline:** Developed `scripts/ingest-docs.js` utilizing `@google/generative-ai` to automatically sync Z-Cortex architectural documentation directly into the vector database (`thoughts` table) so Zella has up-to-date awareness of her own deployment environment.
+2.  **Tech Stack Manifest:** Created `docs/foundational_stack.md` acting as the absolute ground truth for dependency URLs (e.g. MCP schema, Node.js, Express) to suppress LLM hallucination.
 
 ---
 
@@ -65,9 +82,12 @@ When starting the next session, here is the prioritized checklist:
   - Configure a Pangolin `newt` tunnel container joined to the `agent-net` overlay network.
   - Expose CORE via HTTPS on `core.example.com`.
   - Re-adjust `APP_ORIGIN` and `LOGIN_ORIGIN` in `.env` to `https://core.example.com` once the tunnel is active.
-- [ ] **Task 2: Integrate Nate B. Jones' Open Brain (OB1)**
-  - Spin up Supabase/pgvector relational structures as a secondary memory/infrastructure layer.
+- [x] **Task 2: Integrate OpenBrain (OB1)**
+  - Deployed `openbrain-server` (Express/SSE) mapped to port `3040`. Connected to Zella via MCP.
 - [x] **Task 3: Install and configure Hermes Agent**
-  - Deployed in isolated stack `~/docker/hermes-stack/`. Exposes gateway API on port `8642`. Configured and verified.
+  - Deployed in isolated stack `~/docker/hermes-stack/`. Exposes gateway API on port `8642`. Configured and verified. Includes GitHub integration.
 - [ ] **Task 4: Integrate Zero Claw**
   - Deploy the Zero Claw runner and configure it to talk to the stable CORE API.
+- [ ] **Task 5: Reconcile design spec with actual deployment**
+  - Review [2026-05-20-core-memory-os-design.md](file:///Volumes/nvme-2tb/ant-workspace/z-brain/docs/superpowers/specs/2026-05-20-core-memory-os-design.md) — the Dockerfile, Compose, and .env sections have all drifted from reality after deployment fixes (pgvector, Turbo build, Prisma deps, auth secrets, BullMQ queue override).
+  - Decide: update the spec to match, or mark it as historical and point to the actual files as the living reference.

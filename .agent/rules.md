@@ -40,3 +40,9 @@ ssh YOUR_VM_USER@YOUR_VM_IP "curl -s http://127.0.0.1:8642/health/detailed"
 ## 3. Operations Constraints
 - Always use user context `-u hermes` when executing test commands inside the `hermes-agent` container to mimic the agent's runtime environment.
 - Any new features, packages, or skills added to Hermes must be documented in [status.md](file:///Volumes/nvme-2tb/ant-workspace/z-brain/docs/superpowers/status.md).
+
+## 4. No Hardcoded Secrets
+- **Never** hardcode API keys, tokens, passwords, or connection strings in source files.
+- All secrets must live in `.env` files (which are gitignored) or be injected via Docker Compose `${VAR}` syntax.
+- Source files should reference secrets via `process.env.*` (JS) or `os.environ.get()` (Python).
+- Every directory that requires secrets must include a `.env.example` template with placeholder values.
