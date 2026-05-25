@@ -2,29 +2,18 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import pg from 'pg';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load from environment (see .env.example for required vars)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const DB_URL = process.env.DATABASE_URL;
-
-if (!GEMINI_API_KEY || !DB_URL) {
-  console.error("❌ Missing required environment variables: GEMINI_API_KEY, DATABASE_URL");
-  console.error("   Copy .env.example to .env and fill in the values.");
-  process.exit(1);
-}
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-
-const pool = new pg.Pool({ connectionString: DB_URL });
+// OpenBrain server URL — runs on the z-brain VM, exposed on port 3040
+const OPENBRAIN_URL = process.env.OPENBRAIN_URL || 'http://YOUR_VM_IP:3040';
 
 /**
- * Split text into chunks by markdown headers
+ * Split text into chunks by markdown headers.
+ * Secondary split if any chunk exceeds 2000 chars.
  */
 function chunkMarkdown(text) {
   const chunks = [];
@@ -41,12 +30,12 @@ function chunkMarkdown(text) {
       currentChunk += line + '\n';
     }
   }
-  
+
   if (currentChunk.trim().length > 0) {
     chunks.push(currentChunk.trim());
   }
-  
-  // Secondary split if chunk is still too huge (> 2000 chars)
+
+  // Secondary split if chunk is still too large (> 2000 chars)
   const finalChunks = [];
   for (const chunk of chunks) {
     if (chunk.length > 2000) {
@@ -56,37 +45,8 @@ function chunkMarkdown(text) {
       finalChunks.push(chunk);
     }
   }
-  
-  return finalChunks;
-}
 
-/**
- * Read the manifest and fetch remote documentation URLs.
- */
-async function getRemoteDocs() {
-  const manifestPath = path.join(__dirname, '../docs/foundational_stack.md');
-  if (!fs.existsSync(manifestPath)) return [];
-  
-  const content = fs.readFileSync(manifestPath, 'utf8');
-  const urls = content.match(/https:\/\/raw\.githubusercontent\.com[^\s]+/g) || [];
-  
-  const remoteDocs = [];
-  for (const url of urls) {
-    console.log(`Fetching remote documentation: ${url}`);
-    try {
-      const res = await fetch(url);
-      if (res.ok) {
-        const text = await res.text();
-        remoteDocs.push({
-          source: url,
-          content: text
-        });
-      }
-    } catch (err) {
-      console.error(`Failed to fetch ${url}:`, err.message);
-    }
-  }
-  return remoteDocs;
+  return finalChunks;
 }
 
 /**
@@ -94,7 +54,7 @@ async function getRemoteDocs() {
  */
 function getLocalDocs(dir, fileList = []) {
   if (!fs.existsSync(dir)) return fileList;
-  
+
   const files = fs.readdirSync(dir);
   for (const file of files) {
     const filePath = path.join(dir, file);
@@ -103,80 +63,112 @@ function getLocalDocs(dir, fileList = []) {
     } else if (file.endsWith('.md')) {
       fileList.push({
         source: filePath,
-        content: fs.readFileSync(filePath, 'utf8')
+        content: fs.readFileSync(filePath, 'utf8'),
       });
     }
   }
   return fileList;
 }
 
-async function ingestChunk(chunkText, source) {
-  try {
-    const result = await model.embedContent({
-      content: { parts: [{ text: chunkText }] },
-      outputDimensionality: 768,
-    });
-    const embedding = result.embedding.values.slice(0, 768);
-    
-    // Convert float array to pgvector string format '[0.1, 0.2, ...]'
-    const vectorString = '[' + embedding.join(',') + ']';
-    
-    const metadata = { source, type: 'documentation' };
-    
-    // 1. First upsert the thought
-    const upsertRes = await pool.query(
-      `SELECT * FROM upsert_thought($1, $2::jsonb);`,
-      [chunkText, JSON.stringify({ metadata })]
-    );
-    // Determine the ID from the returned row (the column name depends on the function's return type)
-    const row = upsertRes.rows[0];
-    let thoughtId = row.id || row.upsert_thought || Object.values(row)[0];
-    if (typeof thoughtId === 'string' && thoughtId.startsWith('{')) {
-      // Postgres returned a composite record as a string
-      // E.g. {"id":"...","fingerprint":"..."} or (..., ...)
-      // Let's regex extract the UUID
-      const match = thoughtId.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
-      if (match) thoughtId = match[1];
-    } else if (typeof thoughtId === 'object' && thoughtId !== null) {
-      thoughtId = thoughtId.id;
+/**
+ * Read the manifest and fetch remote documentation URLs.
+ */
+async function getRemoteDocs() {
+  const manifestPath = path.join(__dirname, '../docs/foundational_stack.md');
+  if (!fs.existsSync(manifestPath)) return [];
+
+  const content = fs.readFileSync(manifestPath, 'utf8');
+  const urls = content.match(/https:\/\/raw\.githubusercontent\.com[^\s]+/g) || [];
+
+  const remoteDocs = [];
+  for (const url of urls) {
+    console.log(`Fetching remote documentation: ${url}`);
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const text = await res.text();
+        remoteDocs.push({ source: url, content: text });
+      }
+    } catch (err) {
+      console.error(`Failed to fetch ${url}:`, err.message);
     }
-    
-    // 2. Then update the embedding in a separate statement
-    await pool.query(
-      `UPDATE thoughts SET embedding = $1::vector WHERE id = $2;`,
-      [vectorString, thoughtId]
-    );
-    console.log(`✅ Ingested chunk from ${source} (${chunkText.length} chars)`);
-  } catch (err) {
-    console.error(`❌ Failed to ingest chunk from ${source}:`, err.message);
   }
+  return remoteDocs;
 }
 
 async function run() {
-  console.log("Starting Document Ingestion Pipeline...");
-  
+  console.log('Starting Document Ingestion Pipeline...');
+  console.log(`OpenBrain URL: ${OPENBRAIN_URL}`);
+
+  // Verify OpenBrain is reachable
+  try {
+    const healthRes = await fetch(`${OPENBRAIN_URL}/health`);
+    const health = await healthRes.json();
+    console.log(`OpenBrain v${health.version} is healthy (${health.sessions} active sessions)`);
+  } catch (err) {
+    console.error(`❌ Cannot reach OpenBrain at ${OPENBRAIN_URL}: ${err.message}`);
+    console.error('   Make sure the openbrain-server container is running on the z-brain VM.');
+    process.exit(1);
+  }
+
+  // Connect to OpenBrain via MCP SSE
+  console.log('Connecting to OpenBrain MCP...');
+  const transport = new SSEClientTransport(new URL(`${OPENBRAIN_URL}/sse`));
+  const client = new Client({ name: 'ingest-docs', version: '2.0.0' });
+  await client.connect(transport);
+  console.log('✅ MCP connection established');
+
+  // Gather documents
   const docsDir = path.join(__dirname, '../docs');
   const localDocs = getLocalDocs(docsDir);
   const remoteDocs = await getRemoteDocs();
-  
   const allDocs = [...localDocs, ...remoteDocs];
   console.log(`Found ${localDocs.length} local files and ${remoteDocs.length} remote files.`);
-  
+
+  let successCount = 0;
+  let errorCount = 0;
+
   for (const doc of allDocs) {
-    console.log(`Processing: ${doc.source}`);
+    console.log(`\nProcessing: ${doc.source}`);
     const chunks = chunkMarkdown(doc.content);
-    for (const chunk of chunks) {
-      await ingestChunk(chunk, doc.source);
-      // Rate limit safety
-      await new Promise(r => setTimeout(r, 500));
+    console.log(`  ${chunks.length} chunks`);
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      // Prefix with source for traceability
+      const content = `[Source: ${path.basename(doc.source)}]\n${chunk}`;
+
+      try {
+        const result = await client.callTool({
+          name: 'capture',
+          arguments: { content },
+        });
+
+        const text = result.content?.[0]?.text || '';
+        if (result.isError) {
+          console.error(`  ❌ Chunk ${i + 1}/${chunks.length}: ${text}`);
+          errorCount++;
+        } else {
+          console.log(`  ✅ Chunk ${i + 1}/${chunks.length} (${chunk.length} chars): ${text}`);
+          successCount++;
+        }
+      } catch (err) {
+        console.error(`  ❌ Chunk ${i + 1}/${chunks.length}: ${err.message}`);
+        errorCount++;
+      }
+
+      // Rate limit — OpenBrain calls Gemini for embeddings + metadata
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
-  
-  console.log("Ingestion Complete!");
-  pool.end();
+
+  console.log(`\n${'='.repeat(50)}`);
+  console.log(`Ingestion Complete! ✅ ${successCount} succeeded, ❌ ${errorCount} failed`);
+
+  await client.close();
 }
 
-run().catch(err => {
-  console.error("Fatal Error:", err);
-  pool.end();
+run().catch((err) => {
+  console.error('Fatal Error:', err);
+  process.exit(1);
 });
