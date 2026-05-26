@@ -5,6 +5,7 @@ import * as zellaStatus from "./tools/zella-status.js";
 import * as zellaChat from "./tools/zella-chat.js";
 import * as zellaFeed from "./tools/zella-feed.js";
 import * as zellaBriefing from "./tools/zella-briefing.js";
+import * as zellaShare from "./tools/zella-share.js";
 
 export function createServer() {
   const server = new McpServer({
@@ -36,6 +37,13 @@ export function createServer() {
     zellaBriefing.schema.name,
     zellaBriefing.schema.description,
     zellaBriefing.handler
+  );
+
+  server.tool(
+    zellaShare.schema.name,
+    zellaShare.schema.description,
+    zellaShare.schema.parameters,
+    zellaShare.handler
   );
 
   return server;
