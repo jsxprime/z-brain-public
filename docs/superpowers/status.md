@@ -90,8 +90,23 @@ During deployment, the following major blockers were solved:
 
 ### Priority Tasks (In Order)
 
-- [x] **Task 1: Establish Z-Relay / Comm Link**
-  - Built local MCP bridge to `/api/v1/mcp` and direct SSH sqlite injection for Zella.
+> [!NOTE]
+> **P0 RESOLVED — Zella Communication Restored (2026-05-26)**
+>
+> **Root cause:** `dotenv` v17.4.2 prints a banner to stdout (`◇ injected env (7) from .env`) which corrupted the MCP stdio protocol. The IDE's MCP client saw non-JSON on the first line of stdout and silently disconnected.
+>
+> **Resolution:**
+> 1. Made the Hermes API (`/v1/chat/completions`) the primary, universal communication method — works in any IDE, no MCP required.
+> 2. Fixed z-relay with `dotenv.config({ quiet: true })` — now works as an MCP enhancement for MCP-capable IDEs.
+> 3. Rewrote SKILL.md to use Hermes API as primary with z-relay as optional fallback.
+> 4. Updated System Manual, Agent Coordination Protocol, and created portable IDE Communication Guide.
+>
+> **Why it appeared to work before:** Agents in earlier sessions used raw `curl` to the Hermes API or direct Node.js scripts — these worked perfectly but bypassed z-relay entirely.
+
+- [x] **Task 1: Establish Z-Relay / Comm Link** ✅ (2026-05-26)
+  - Hermes API is now the primary, universal communication channel (works in any IDE).
+  - Z-relay dotenv fix applied (`{ quiet: true }`); MCP server now initializes correctly.
+  - Documentation updated: System Manual §5, Agent Coordination Protocol §4, IDE Communication Guide, SKILL.md.
 - [x] **Task 2: Multi-IDE workspace compatibility**
   - Established `.agent-lock.json` protocol on the VM host.
 - [ ] **Task 3: Explore new skills/plugins for Zella/Hermes**

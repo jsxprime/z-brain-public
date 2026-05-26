@@ -31,11 +31,14 @@ The user may interact with the Hermes Agent via Telegram or the web interface ou
    ssh YOUR_VM_USER@YOUR_VM_IP "docker exec hermes-agent python3 -c 'import sqlite3; conn = sqlite3.connect(\"/opt/data/state.db\"); cur = conn.cursor(); cur.execute(\"SELECT id, role, content FROM messages WHERE session_id = (SELECT id FROM sessions ORDER BY started_at DESC LIMIT 1) ORDER BY id DESC LIMIT 5;\"); [print(f\"[{r}] {c[:150]}...\") for id, r, c in cur.fetchall()]'"
    ```
 
-### Step C: API Server Bind Verification
-Ensure the Hermes API is accessible by checking that the port binding is mapped correctly to `0.0.0.0` (not `127.0.0.1`):
+### Step D: Verify Zella Communication
+Check that the Hermes API is reachable and Zella is online:
 ```bash
-ssh YOUR_VM_USER@YOUR_VM_IP "curl -s http://127.0.0.1:8642/health/detailed"
+curl -s http://YOUR_VM_IP:8642/health/detailed
 ```
+Expected: `{"status": "ok", "gateway_state": "running", "platforms": {"telegram": {"state": "connected"}, ...}}`
+
+If you need to communicate with Zella during the session, see the **Inter-Agent Communication** section in `docs/superpowers/Z-Brain-System-Manual.md` for curl recipes and the full channel matrix.
 
 ## 3. Operations Constraints
 - Always use user context `-u hermes` when executing test commands inside the `hermes-agent` container to mimic the agent's runtime environment.
@@ -46,3 +49,11 @@ ssh YOUR_VM_USER@YOUR_VM_IP "curl -s http://127.0.0.1:8642/health/detailed"
 - All secrets must live in `.env` files (which are gitignored) or be injected via Docker Compose `${VAR}` syntax.
 - Source files should reference secrets via `process.env.*` (JS) or `os.environ.get()` (Python).
 - Every directory that requires secrets must include a `.env.example` template with placeholder values.
+
+## 5. Communicating with Zella
+The Hermes Agent exposes an OpenAI-compatible API at `http://YOUR_VM_IP:8642/v1/chat/completions`. This is the same endpoint Telegram uses. Any IDE agent can talk to Zella with a simple HTTP request — no custom code needed on Zella's side.
+
+- **API Key:** Stored in `relay/.env` as `HERMES_API_KEY`
+- **Full documentation:** `docs/superpowers/Z-Brain-System-Manual.md` (§5)
+- **IDE-specific setup guide:** `docs/guides/ide-agent-zella-comm.md`
+- **MCP enhancement (optional):** If your IDE supports MCP stdio servers, z-relay at `relay/src/index.js` wraps these API calls into MCP tools (`zella_chat`, `zella_status`, `zella_feed`, `zella_briefing`, `zella_share`).

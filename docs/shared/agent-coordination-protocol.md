@@ -101,10 +101,29 @@ To prevent naming drift, the following canonical names MUST be used:
 
 ## 4. Communication Channels
 
+### 4.0 Primary: Hermes API (Universal)
+
+The Hermes Agent API is the **primary communication channel** for all IDE agents. It is an OpenAI-compatible endpoint — the same API that Telegram uses to talk to Zella.
+
+- **Endpoint:** `http://YOUR_VM_IP:8642/v1/chat/completions`
+- **Auth:** Bearer token from `relay/.env` (`HERMES_API_KEY`)
+- **Health:** `GET http://YOUR_VM_IP:8642/health/detailed`
+- **Full docs:** `docs/superpowers/Z-Brain-System-Manual.md` (§5) and `docs/guides/ide-agent-zella-comm.md`
+
+Any agent in any IDE can send a message to Zella with:
+```bash
+curl -s http://YOUR_VM_IP:8642/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $(grep HERMES_API_KEY relay/.env | cut -d= -f2)" \
+  -d '{"model":"hermes-agent","messages":[{"role":"user","content":"MESSAGE"}],"stream":false}'
+```
+
+### 4.1 Channel Matrix
+
 | Channel | Direction | Use For | MUST NOT Use For |
 |---|---|---|---|
-| **z-relay injection** | Antigravity → Zella | Urgent notifications, deployment alerts | Long documents, data dumps |
-| **Hermes API** (`/v1/chat/completions`) | Antigravity → Zella | Diagnostic queries, collaborative drafting | One-way announcements |
+| **Hermes API** (`/v1/chat/completions`) | Antigravity → Zella | **All two-way communication**: notifications, questions, collaborative drafting, deployment alerts | — |
+| **z-relay MCP** (optional) | Antigravity → Zella | Same as Hermes API, but via named MCP tools (`zella_chat`, `zella_status`, etc.) | Agents MUST NOT depend on z-relay being available — always fall back to Hermes API |
 | **OpenBrain `capture`** | Both → shared | Durable state records, architectural decisions | Ephemeral messages |
 | **`docs/shared/`** (git repo) | Both → shared | Protocol docs, handoff state, shared references | Scratch files, temporary data |
 | **`handoff.yaml`** | Both → shared | Machine-parseable state snapshots | Prose or explanations |

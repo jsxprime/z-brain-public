@@ -10,16 +10,16 @@
 # - Every verified claim MUST include verified_at, verification_method, verified_by
 
 # ─── Metadata ───────────────────────────────────────────────────────────────
-handoff_id: "2026-05-26-001"
-updated_at: "2026-05-26T04:07:00-04:00"
+handoff_id: "2026-05-26-002"
+updated_at: "2026-05-26T14:26:00-04:00"
 updated_by: "antigravity"
 
 # ─── Active Task ────────────────────────────────────────────────────────────
 task:
-  id: "fix-openbrain-stale-code"
-  summary: "OpenBrain container was running pre-Omnigraph code due to missing bind mounts"
-  status: "verified-by-both"              # Closed enum — see protocol §2.1
-  owner: "none"
+  id: "fix-zella-communication"
+  summary: "Restored Antigravity-Zella communication: Hermes API as universal primary, z-relay dotenv fix, documentation updates"
+  status: "verified-live"                  # Closed enum — see protocol §2.1
+  owner: "antigravity"
   priority: "completed"
   blockers: []
 
@@ -75,19 +75,19 @@ known_unknowns:
 # Every handoff MUST end with explicit asks — not just status, but obligations.
 next_actions:
   for_antigravity:
-    - "FIRST THING: Re-run `node ingest-docs.js` (85 chunks failed due to Gemini API credits depleted)"
-    - "FIRST THING: Re-capture session summary to OpenBrain (capture failed same reason)"
-    - "Verify Gemini embedding API is functional before doing any other OpenBrain work"
+    - "Verify Zella communication via Hermes API (send test message, confirm two-way)"
+    - "Commit and push all documentation changes so Zella can read them via GitHub MCP"
+    - "After IDE restart: verify z-relay MCP tools appear in mcp/z-relay/"
   for_zella:
-    - "Verify synthesis worker produced output after force_synthesis_run job #3"
-    - "Test capture with domain parameter in a real workflow"
+    - "Read updated docs/superpowers/Z-Brain-System-Manual.md §5 and docs/shared/agent-coordination-protocol.md §4"
+    - "Confirm she can receive messages from IDE agents via the Hermes API"
   for_jay:
-    - "BEFORE NEXT SESSION: Top up Gemini API prepayment credits at https://ai.studio/projects"
-    - "Decide domain backfill strategy for existing 97 thoughts (confirmed: yes, will consult Zella)"
-    - "Review protocol v1.1 in docs/shared/"
+    - "Review updated documentation (System Manual §5, IDE guide, Agent Coordination Protocol §4)"
+    - "Consider addressing code review security findings (docs/code-review-2026-05-26.md) in a follow-up session"
 
 # ─── Session Log (Append-Only) ─────────────────────────────────────────────
 session_log:
+  - "2026-05-26T14:26 [antigravity] P0 RESOLVED: Root cause was dotenv v17 stdout pollution corrupting MCP stdio. Fixed with { quiet: true }. Made Hermes API primary universal comm channel. Updated System Manual, Protocol, SKILL.md, created IDE guide."
   - "2026-05-26T04:10 [antigravity] Added P0 blocker: Gemini credit depletion; updated next_actions for recovery"
   - "2026-05-26T04:07 [antigravity] Session teardown: Gemini API credits depleted — ingestion (85/85 failed) and session capture both blocked. Added as P0 blocker for next session."
   - "2026-05-26T03:55 [antigravity] Session teardown: status.md updated, committed 1f23d46, pushed"

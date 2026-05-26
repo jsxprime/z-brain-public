@@ -54,9 +54,71 @@ Raw thoughts are messy. To make them useful, the system employs an autonomous ba
 
 ---
 
-## 5. Out-of-Band Sync & Relay Protocols
-Because the human user interacts with Zella via Telegram (Out-of-Band), other agents (like Antigravity IDE) must be careful not to fall out of sync.
-- **Z-Relay:** If an external agent modifies the infrastructure, they must use the SSH Relay (`relay/src/clients/ssh.js`) to inject a notification directly into Zella's SQLite `state.db`. This allows Zella to instantly read the message as if the human user had forwarded it, keeping all agents structurally aligned.
+## 5. Inter-Agent Communication
+
+All IDE agents (Antigravity, Claude Code, Codex, OpenCode, etc.) communicate with Zella through the **Hermes Agent API** — the same OpenAI-compatible endpoint that Telegram uses. No custom code is needed on Zella's side.
+
+### A. The Hermes API (Primary — Universal)
+
+| Detail | Value |
+|---|---|
+| **Endpoint** | `http://YOUR_VM_IP:8642/v1/chat/completions` |
+| **Auth** | Bearer token (stored in `relay/.env` as `HERMES_API_KEY`) |
+| **Format** | OpenAI-compatible chat completions |
+| **Health check** | `GET http://YOUR_VM_IP:8642/health/detailed` |
+
+#### Send a message to Zella:
+```bash
+curl -s http://YOUR_VM_IP:8642/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $(grep HERMES_API_KEY relay/.env | cut -d= -f2)" \
+  -d '{
+    "model": "hermes-agent",
+    "messages": [{"role":"user","content":"Hello Zella, this is a test from the IDE agent."}],
+    "stream": false
+  }'
+```
+
+#### Check if Zella is online:
+```bash
+curl -s http://YOUR_VM_IP:8642/health/detailed
+```
+
+#### Multi-turn conversation:
+Include prior messages in the `messages` array, just like the OpenAI API:
+```json
+{
+  "model": "hermes-agent",
+  "messages": [
+    {"role": "user", "content": "First message"},
+    {"role": "assistant", "content": "Zella's first reply"},
+    {"role": "user", "content": "Follow-up question"}
+  ],
+  "stream": false
+}
+```
+
+### B. Channel Matrix
+
+| Need | Channel | How |
+|---|---|---|
+| Talk to Zella (two-way) | **Hermes API** | `POST /v1/chat/completions` |
+| Check if Zella is online | **Hermes API** | `GET /health/detailed` |
+| Share durable state across agents | **OpenBrain MCP** | `capture` tool with `domain` param |
+| Query Zella's recent sessions (diagnostic) | **SSH** | `ssh YOUR_VM_USER@YOUR_VM_IP "docker exec hermes-agent sqlite3 ..."` |
+| MCP-native tool calls (if IDE supports it) | **z-relay MCP** | `zella_chat`, `zella_status`, etc. |
+
+### C. Conversation History
+
+Hermes stores every message in its SQLite `state.db` (sessions + messages tables) regardless of which channel delivers the message. Conversations from the API, Telegram, and SSH injection all land in the same database. History is preserved across sessions.
+
+### D. For IDE Agents Setting Up Communication
+
+See `docs/guides/ide-agent-zella-comm.md` for a step-by-step guide to building Zella communication into your IDE's skill/workflow system.
+
+### E. Out-of-Band Sync
+
+Because the operator interacts with Zella via Telegram outside of IDE sessions, other agents must check for out-of-band changes at session startup. The startup workflow in `.agent/rules.md` covers this.
 
 ---
 *End of Manual.*

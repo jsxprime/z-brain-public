@@ -1,0 +1,14 @@
+{
+  "name": "telegram-mcp",
+  "version": "1.0.0",
+  "description": "Telegram Push MCP Server for Hermes",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "dotenv": "^16.4.5"
+  }
+}
