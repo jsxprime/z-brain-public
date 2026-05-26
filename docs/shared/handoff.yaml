@@ -10,25 +10,28 @@
 # - Every verified claim MUST include verified_at, verification_method, verified_by
 
 # ─── Metadata ───────────────────────────────────────────────────────────────
-handoff_id: "2026-05-26-002"
-updated_at: "2026-05-26T14:43:00-04:00"
+handoff_id: "2026-05-26-003"
+updated_at: "2026-05-26T17:52:00-04:00"
 updated_by: "antigravity"
 
 # ─── Active Task ────────────────────────────────────────────────────────────
 task:
-  id: "fix-zella-communication"
-  summary: "Restored Antigravity-Zella communication: Hermes API as universal primary, z-relay dotenv fix, documentation updates"
-  status: "verified-by-both"                # Zella reviewed docs, gave SITREP, confirmed link working
+  id: "fix-z-relay-config-location"
+  summary: "Fixed z-relay MCP: config was in wrong file (~/.gemini/antigravity-ide/ instead of ~/.gemini/config/). Added to correct file, reconciled all docs."
+  status: "verified-live"
   owner: "antigravity"
   priority: "completed"
   blockers: []
+  verified_at: "2026-05-26T17:50:00-04:00"
+  verification_method: "Called zella_status, zella_chat, zella_briefing via z-relay MCP tools in-session — all returned valid responses"
+  verified_by: ["antigravity"]
 
 # ─── Source State ───────────────────────────────────────────────────────────
 source:
   repo: "jsxprime/z-brain-public"               # Canonical repo name
   repo_root: "/Volumes/nvme-2tb/ant-workspace/z-brain"
   branch: "main"
-  commit_sha: "19b636f"
+  commit_sha: "d1e02f6"
   dirty_state: false
   changed_files: []
 
@@ -87,7 +90,7 @@ next_actions:
 
 # ─── Session Log (Append-Only) ─────────────────────────────────────────────
 session_log:
-  - "2026-05-26T14:43 [antigravity] Session teardown: Zella confirmed docs, gave SITREP, thanked the operator. Session summary captured to OpenBrain. Committed 6497033, pushed."
+  - "2026-05-26T17:52 [antigravity] Session teardown: z-relay MCP verified working in-session. Root cause was config in wrong file. All docs reconciled. Committed d1e02f6, pushed."
   - "2026-05-26T14:26 [antigravity] P0 RESOLVED: Root cause was dotenv v17 stdout pollution corrupting MCP stdio. Fixed with { quiet: true }. Made Hermes API primary universal comm channel. Updated System Manual, Protocol, SKILL.md, created IDE guide."
   - "2026-05-26T04:10 [antigravity] Added P0 blocker: Gemini credit depletion; updated next_actions for recovery"
   - "2026-05-26T04:07 [antigravity] Session teardown: Gemini API credits depleted — ingestion (85/85 failed) and session capture both blocked. Added as P0 blocker for next session."
