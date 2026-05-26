@@ -35,12 +35,18 @@ export async function injectIntoActiveTelegramSession(role, content) {
   if (!sessionOutput || sessionOutput.length === 0) return null;
   
   const sessionId = sessionOutput[0].id;
-  const escapedContent = content.replace(/"/g, '\\"').replace(/'/g, "\\'");
+  const b64Content = Buffer.from(content).toString('base64');
+  const pyScript = `import sqlite3, sys, base64
+content = base64.b64decode("${b64Content}").decode('utf-8')
+conn = sqlite3.connect('/opt/data/state.db')
+cur = conn.cursor()
+cur.execute('INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, strftime("%s", "now"))', ('${sessionId}', '${role}', content))
+conn.commit()`;
+
+  const b64PyScript = Buffer.from(pyScript).toString('base64');
+  const cmd = `echo "${b64PyScript}" | base64 -d | ssh ${config.VM_USER}@${config.VM_HOST} "docker exec -i hermes-agent python3"`;
   
-  const pyCmd = `import sqlite3; conn = sqlite3.connect('/opt/data/state.db'); cur = conn.cursor(); cur.execute('INSERT INTO messages (session_id, role, content, timestamp) VALUES (\\"${sessionId}\\", \\"${role}\\", \\"${escapedContent}\\", strftime(\\"%s\\", \\"now\\"))'); conn.commit()`;
-  const b64Cmd = Buffer.from(pyCmd).toString('base64');
-  const cmd = `docker exec hermes-agent sh -c 'echo ${b64Cmd} | base64 -d | python3'`;
-  await executeSSH(cmd);
+  await execAsync(cmd);
   
   return sessionId;
 }

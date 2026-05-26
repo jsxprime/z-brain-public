@@ -1,18 +1,17 @@
 # Z-Brain Session Checkpoint
 
-**Session:** 2026-05-25 Recovery Session  
-**Status:** ✅ All systems green  
+**Session:** 2026-05-25 Z-Relay & Locking Session  
+**Status:** ✅ z-relay, push notifications, and locking live  
 **Last Commit:** `becf71a` → pushed to `jsxprime/z-brain-public` main
 
 ---
 
-## 1. What Was Fixed This Session
+## 1. What Was Built This Session
 
-1. **CORE compose reverted** — removed accidental Ollama URL, Postgres port 5435, Neo4j auth disable
-2. **Neo4j auth reset** — deleted stale auth file, re-initialized with correct password
-3. **OpenBrain v1.1.1** — multi-session SSE transport (fixed double-sessionId bug)
-4. **BullMQ cleanup** — cleared 35 stale failed jobs
-5. **Hermes restart** — cleared circuit breaker, reconnected to OpenBrain
+1. **`z-relay` MCP Server** — Deployed a local API router that allows Antigravity to command Zella directly via her HTTP gateway (`/api/v1/mcp`).
+2. **Live Memory Injection** — Bypassed Zella's API limitations by building a direct SQLite injection pipeline over SSH, allowing us to insert directives directly into her active Telegram thread.
+3. **`telegram_push` MCP Server** — Deployed a dedicated Node.js MCP server directly to the VM's Docker volume, giving Zella autonomous ability to send proactive push notifications using her raw Bot Token.
+4. **Workspace Lockfile Protocol** — Solved Task 2 (Multi-IDE compatibility) by establishing `.agent-lock.json` in the VM's `hermes-stack/data` volume with a 30-minute auto-expiration. Injected a system directive so Zella checks this lock before destructive edits.
 
 ## 2. Current System Status
 
@@ -27,7 +26,13 @@
 
 ## 3. Next Session Goals
 
-**Give Zella access to coding CLI tools:**
+**From status.md Checklist:**
+- [ ] **Task 3: Explore new skills/plugins for Zella/Hermes**
+- [ ] **Task 4: Expose stack securely via Pangolin Tunnel** (`core.example.com`)
+- [ ] **Task 5: Integrate Zero Claw**
+- [ ] **Task 6: Reconcile design spec**
+
+**Give Zella access to coding CLI tools (Pending):**
 - [ ] **Antigravity CLI** — configure so Zella can invoke Antigravity agents
 - [ ] **Claude Code CLI** — set up headless Claude Code access (OAuth token injection)
 - [ ] **OpenAI Codex** — integrate Codex CLI for Zella's use

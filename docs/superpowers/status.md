@@ -86,12 +86,12 @@ During deployment, the following major blockers were solved:
 
 ## 6. What's Next?
 
-When starting the next session, here is the prioritized checklist:
+### Priority Tasks (In Order)
 
-- [ ] **Task 1: Improve Antigravity ↔ Zella interaction**
-  - Establish better communication patterns between Antigravity IDE agent and Zella (Hermes/Telegram agent).
-- [ ] **Task 2: Multi-IDE workspace compatibility**
-  - Ensure z-brain workspace is set up for use with Claude Code, OpenAI Codex, and OpenCode in addition to Antigravity.
+- [x] **Task 1: Establish Z-Relay / Comm Link**
+  - Built local MCP bridge to `/api/v1/mcp` and direct SSH sqlite injection for Zella.
+- [x] **Task 2: Multi-IDE workspace compatibility**
+  - Established `.agent-lock.json` protocol on the VM host.
 - [ ] **Task 3: Explore new skills/plugins for Zella/Hermes**
   - Research and evaluate new capabilities to extend Zella's toolset.
 - [ ] **Task 4: Expose stack securely via Pangolin Tunnel**

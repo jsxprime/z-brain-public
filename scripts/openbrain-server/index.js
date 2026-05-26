@@ -10,6 +10,8 @@ import pg from "pg";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { Queue, Worker } from "bullmq";
+import IORedis from "ioredis";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +35,57 @@ if (!DATABASE_URL) {
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const pool = new pg.Pool({
   connectionString: DATABASE_URL,
+});
+
+const REDIS_URL = process.env.REDIS_URL || 'redis://core-redis:6379';
+const redisConnection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+
+const synthesisQueue = new Queue("synthesis", { connection: redisConnection });
+
+const synthesisWorker = new Worker("synthesis", async (job) => {
+  console.error(`[BullMQ] Starting synthesis job: ${job.id}`);
+  
+  // 1. Get all distinct domains
+  const domainResult = await pool.query("SELECT DISTINCT metadata->>'domain' AS domain FROM thoughts WHERE metadata->>'domain' IS NOT NULL");
+  const domains = domainResult.rows.map(r => r.domain);
+  
+  for (const domain of domains) {
+    console.error(`[BullMQ] Synthesizing context brief for domain: ${domain}`);
+    // Fetch recent thoughts for this domain
+    const thoughtsResult = await pool.query(
+      "SELECT content FROM thoughts WHERE metadata->>'domain' = $1 ORDER BY created_at DESC LIMIT 100",
+      [domain]
+    );
+    const thoughts = thoughtsResult.rows.map(r => r.content).join("\n");
+    
+    if (thoughts.length === 0) continue;
+
+    // Use Gemini to synthesize
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = `You are a memory synthesizer. Review the following raw thoughts and create a comprehensive, organized Role-Specific Context Brief.
+Domain: ${domain}
+Thoughts:
+${thoughts}
+
+Output the brief in Markdown format, combining related facts and resolving contradictions.`;
+    const result = await model.generateContent(prompt);
+    const synthesizedBrief = result.response.text();
+    
+    // Save the synthesized brief as a 'persona' type thought
+    const metadata = { type: "persona-v2", domain: domain, synthesized: true };
+    await pool.query(
+      "SELECT upsert_thought($1, $2)",
+      [synthesizedBrief, JSON.stringify({ metadata })]
+    );
+  }
+  
+  console.error(`[BullMQ] Completed synthesis job: ${job.id}`);
+}, { connection: redisConnection });
+
+// Schedule the recurring cron job (every 4 hours)
+synthesisQueue.add('synthesis-cron', {}, { 
+  repeat: { pattern: '0 */4 * * *' },
+  jobId: 'recurring-synthesis' // Prevents duplicate cron jobs
 });
 
 async function getEmbedding(text) {
@@ -77,21 +130,20 @@ Thought: ${text}`;
   }
 }
 
-// Define tools (shared across all sessions)
-const tools = [
-  {
-    name: "search",
-    description: "Search thoughts in OpenBrain using semantic similarity. Returns matching thoughts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "The natural language query to search for" },
-        threshold: { type: "number", description: "Cosine similarity threshold (default 0.5)", default: 0.5 },
-        limit: { type: "number", description: "Max number of results (default 10)", default: 10 }
-      },
-      required: ["query"]
-    }
-  },
+  const tools = [
+    {
+      name: "search",
+      description: "Search thoughts in OpenBrain using semantic similarity. Returns matching thoughts.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "The natural language query to search for" },
+          threshold: { type: "number", description: "Cosine similarity threshold (default 0.5)", default: 0.5 },
+          limit: { type: "number", description: "Max number of results (default 10)", default: 10 }
+        },
+        required: ["query"]
+      }
+    },
   {
     name: "fetch",
     description: "Retrieve a specific thought by its UUID ID.",
@@ -109,9 +161,10 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        content: { type: "string", description: "The thought text content to capture" }
+        content: { type: "string", description: "The thought text content to capture" },
+        domain: { type: "string", description: "The authorized domain for this memory (e.g., engineering, personal)" }
       },
-      required: ["content"]
+      required: ["content", "domain"]
     }
   },
   {
@@ -131,6 +184,22 @@ const tools = [
       type: "object",
       properties: {}
     }
+  },
+  {
+    name: "list_domains",
+    description: "List all distinct memory domains currently in use across the database.",
+    inputSchema: {
+      type: "object",
+      properties: {}
+    }
+  },
+  {
+    name: "force_synthesis_run",
+    description: "Administratively trigger the BullMQ worker in CORE Memory OS to synthesize role-specific context briefs immediately.",
+    inputSchema: {
+      type: "object",
+      properties: {}
+    }
   }
 ];
 
@@ -138,7 +207,7 @@ const tools = [
  * Creates a new MCP Server instance with all tool handlers registered.
  * Each SSE session gets its own Server instance to avoid transport conflicts.
  */
-function createServer() {
+function createServer(agentRole = 'global') {
   const mcpServer = new Server(
     {
       name: "openbrain",
@@ -163,13 +232,19 @@ function createServer() {
         const { query, threshold = 0.5, limit = 10 } = args;
         const embedding = await getEmbedding(query);
 
+        // match_thoughts returns all rows, we filter by domain if not global
         const dbResult = await pool.query(
           `SELECT * FROM match_thoughts($1, $2, $3)`,
-          [JSON.stringify(embedding), threshold, limit]
+          [JSON.stringify(embedding), threshold, limit * 3] // fetch more for filtering
         );
 
+        let results = dbResult.rows;
+        if (agentRole !== 'global') {
+          results = results.filter(row => row.metadata && row.metadata.domain === agentRole);
+        }
+        
         return {
-          content: [{ type: "text", text: JSON.stringify(dbResult.rows, null, 2) }]
+          content: [{ type: "text", text: JSON.stringify(results.slice(0, limit), null, 2) }]
         };
       }
 
@@ -193,8 +268,9 @@ function createServer() {
       }
 
       if (name === "capture") {
-        const { content } = args;
+        const { content, domain } = args;
         const metadata = await extractMetadata(content);
+        metadata.domain = domain; // enforce domain segregation
         const embedding = await getEmbedding(content);
 
         // Perform upsert via SQL helper
@@ -236,6 +312,27 @@ function createServer() {
         };
       }
 
+      if (name === "list_domains") {
+        const dbResult = await pool.query("SELECT DISTINCT metadata->>'domain' AS domain FROM thoughts WHERE metadata->>'domain' IS NOT NULL");
+        return {
+          content: [{ type: "text", text: JSON.stringify(dbResult.rows.map(r => r.domain), null, 2) }]
+        };
+      }
+
+      if (name === "force_synthesis_run") {
+        try {
+          const job = await synthesisQueue.add('force-run', { trigger: 'manual' });
+          return {
+            content: [{ type: "text", text: `Synthesis job successfully queued in BullMQ. Job ID: ${job.id}` }]
+          };
+        } catch (fetchErr) {
+          return {
+            content: [{ type: "text", text: `Failed to enqueue BullMQ job: ${fetchErr.message}` }],
+            isError: true
+          };
+        }
+      }
+
       throw new Error(`Tool not found: ${name}`);
     } catch (err) {
       console.error(`Error executing tool ${name}:`, err);
@@ -267,9 +364,10 @@ async function main() {
 
   // SSE endpoint — each connection gets its own session
   app.get("/sse", async (req, res) => {
+    const role = req.query.role || 'global';
     // Pass just "/message" — the SDK appends ?sessionId=<uuid> automatically
     const sessionTransport = new SSEServerTransport("/message", res);
-    const sessionServer = createServer();
+    const sessionServer = createServer(role);
 
     // The SDK generates _sessionId internally — use that as our map key
     const sdkSessionId = sessionTransport._sessionId;
