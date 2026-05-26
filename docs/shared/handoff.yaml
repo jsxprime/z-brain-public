@@ -11,7 +11,7 @@
 
 # ─── Metadata ───────────────────────────────────────────────────────────────
 handoff_id: "2026-05-26-001"
-updated_at: "2026-05-26T03:48:00-04:00"
+updated_at: "2026-05-26T04:07:00-04:00"
 updated_by: "antigravity"
 
 # ─── Active Task ────────────────────────────────────────────────────────────
@@ -75,20 +75,22 @@ known_unknowns:
 # Every handoff MUST end with explicit asks — not just status, but obligations.
 next_actions:
   for_antigravity:
-    - "Commit new docs/shared/ files and push to GitHub"
-    - "Run ingest-docs.js to vectorize the coordination protocol"
-    - "Update status.md with session summary"
-    - "Clean up old docs/agent-coordination-protocol.md and docs/handoff.yaml (moved to shared/)"
+    - "FIRST THING: Re-run `node ingest-docs.js` (85 chunks failed due to Gemini API credits depleted)"
+    - "FIRST THING: Re-capture session summary to OpenBrain (capture failed same reason)"
+    - "Verify Gemini embedding API is functional before doing any other OpenBrain work"
   for_zella:
-    - "Read protocol at docs/shared/agent-coordination-protocol.md via GitHub MCP"
     - "Verify synthesis worker produced output after force_synthesis_run job #3"
     - "Test capture with domain parameter in a real workflow"
   for_jay:
+    - "BEFORE NEXT SESSION: Top up Gemini API prepayment credits at https://ai.studio/projects"
     - "Decide domain backfill strategy for existing 97 thoughts (confirmed: yes, will consult Zella)"
     - "Review protocol v1.1 in docs/shared/"
 
 # ─── Session Log (Append-Only) ─────────────────────────────────────────────
 session_log:
+  - "2026-05-26T04:10 [antigravity] Added P0 blocker: Gemini credit depletion; updated next_actions for recovery"
+  - "2026-05-26T04:07 [antigravity] Session teardown: Gemini API credits depleted — ingestion (85/85 failed) and session capture both blocked. Added as P0 blocker for next session."
+  - "2026-05-26T03:55 [antigravity] Session teardown: status.md updated, committed 1f23d46, pushed"
   - "2026-05-26T03:48 [zella] Read both docs via GitHub, approved v1.1, flagged stale commit_sha in handoff"
   - "2026-05-26T03:47 [antigravity] Committed 19b636f, pushed to GitHub, notified Zella"
   - "2026-05-26T03:45 [antigravity] Incorporated Tier 1 feedback, created docs/shared/ workspace"
