@@ -1,8 +1,8 @@
 # Superpowers Deployment Status
 
-**Last Updated:** 2026-05-25 (Memory Systems Fix Session)
+**Last Updated:** 2026-05-26 (OpenBrain Deployment Fix & Agent Coordination Protocol Session)
 
-*Note: Fixed all CORE memory systems (memory_search, memory_about_user, memory_ingest). Root cause was missing env var passthrough in docker-compose.yml after the May 24 Ollama revert. CORE now correctly uses Google Gemini gemini-embedding-2 at 1024 dimensions. Persona document populated with user identity, preferences, and directives. Zella's agent-memory-systems skill updated to remove stale degraded-state notes and fix hallucinated tool call pattern (memory_get_documents).*
+*Note: Diagnosed and fixed the stale-code deployment gap where the OpenBrain Docker container was running pre-Omnigraph v1.0 code (no bind mounts). Created `docker-compose.yml` with bind mounts, rebuilt image, fixed Redis auth. Collaboratively drafted the Agent Coordination Protocol v1.1 with Zella, establishing a mandatory Provenance Chain, shared `docs/shared/` workspace on GitHub, and machine-parseable `handoff.yaml` format.*
 
 ---
 
@@ -39,6 +39,7 @@ The deployment runs via isolated Docker Compose stacks on the host VM:
 
 ### OpenBrain Stack (`~/docker/openbrain-server/` or local `scratch/openbrain-server/`)
 1.  **`openbrain-server`:** Node.js Express server running an MCP SSE transport layer on port `3040`. Facilitates `gemini-embedding-2` vector storage into `core_brain` Postgres.
+2.  **Synthesis Worker**: Integrated `bullmq` and `ioredis` to run asynchronous background synthesis on raw thoughts to generate Role-Specific Context Briefs (Persona v2).
 
 ---
 
@@ -74,6 +75,7 @@ During deployment, the following major blockers were solved:
 9.  **Headless Authentication Sync:** Injected the long-lived `sk-ant-oat01` Claude Pro OAuth token via host Docker volumes directly into the `cli-sandbox` Ubuntu container environment to bypass interactive browser limits.
 10. **Hermes Agent Iteration Rate Limit:** Diagnosed 2,000,000 TPM Gemini API rate limits occurring due to the Telegram session file bloating to 1.5MB after the agent hit a 90-iteration internal safety loop while attempting to patch plugins. Advised `/reset` command to purge context.
 11. **CORE Memory Systems Outage (2026-05-25):** All memory MCP tools (`memory_search`, `memory_about_user`, `memory_ingest`) were returning empty/error. Root cause: `docker-compose.yml` was missing env var passthrough for `EMBEDDINGS_PROVIDER`, `EMBEDDING_MODEL`, `VECTOR_PROVIDER`, `GOOGLE_GENERATIVE_AI_API_KEY`, `CHAT_PROVIDER`, `MODEL`, `OLLAMA_URL`, and `EMBEDDING_MODEL_SIZE`. CORE fell back to Zod defaults (OpenAI + mxbai-embed-large with `OPENAI_API_KEY=not_needed`). Fixed by adding 9 env var lines. Also fixed: Neo4j auth rejection (disabled auth), Persona document source field (`system` → `persona-v2`), and populated Persona content.
+12. **Context Pollution & Neo4j Integration:** Deployed "Project Omnigraph" to fix cross-domain memory bleed. OpenBrain `capture` now requires domain parameters and restricts `search` strictly to the active role. Graph relationships are mapped using the `neo4j-memory` MCP, enabling "Everything is a Thing" structural logic.
 
 ---
 
@@ -101,7 +103,24 @@ During deployment, the following major blockers were solved:
   - Deploy the Zero Claw runner and configure it to talk to the stable CORE API.
 - [ ] **Task 6: Reconcile design spec with actual deployment**
   - Review the original design spec — it has drifted significantly from reality.
+- [ ] **Task 11: Unified Web Dashboard**
+  - Create a "single pane of glass" web UI for managing all configurations, monitoring agents, and visualizing graph nodes.
 - [x] **Task 7: Fix CORE memory systems** ✅ (2026-05-25)
 - [x] **Task 8: Integrate OpenBrain (OB1)** ✅
 - [x] **Task 9: Install and configure Hermes Agent** ✅
 - [x] **Task 10: Give Zella access to coding CLIs** ✅ (2026-05-25)
+- [x] **Task 12: Domain-Segregated Memory Architecture (Project Omnigraph)** ✅
+- [x] **Task 13: Fix OpenBrain stale-code deployment** ✅ (2026-05-26)
+  - Root cause: Docker container had no bind mounts, running old v1.0 image.
+  - Created `docker-compose.yml` with bind mounts for `index.js` and `.env`.
+  - Fixed Redis NOAUTH by adding `REDIS_URL` to `.env`.
+  - Verified by both Antigravity and Zella (all 7 MCP tools visible).
+- [x] **Task 14: Agent Coordination Protocol** ✅ (2026-05-26)
+  - Collaboratively drafted with Zella via Hermes API.
+  - Protocol v1.1: RFC 2119 language, Provenance Chain, closed status enums.
+  - Shared workspace at `docs/shared/` in GitHub repo.
+  - Machine-parseable `handoff.yaml` format.
+- [ ] **Task 15: Domain Backfill for Existing Thoughts**
+  - Backfill the 97 existing OpenBrain thoughts with domain tags. the operator to consult Zella on taxonomy.
+- [ ] **Task 16: Evaluate Protocol Tier 2 Feedback**
+  - Review Zella's remaining 10 suggestions (structured evidence refs, failure-mode rules, etc.) and incorporate as needed.
