@@ -11,14 +11,14 @@
 
 # ─── Metadata ───────────────────────────────────────────────────────────────
 handoff_id: "2026-05-26-002"
-updated_at: "2026-05-26T14:26:00-04:00"
+updated_at: "2026-05-26T14:43:00-04:00"
 updated_by: "antigravity"
 
 # ─── Active Task ────────────────────────────────────────────────────────────
 task:
   id: "fix-zella-communication"
   summary: "Restored Antigravity-Zella communication: Hermes API as universal primary, z-relay dotenv fix, documentation updates"
-  status: "verified-live"                  # Closed enum — see protocol §2.1
+  status: "verified-by-both"                # Zella reviewed docs, gave SITREP, confirmed link working
   owner: "antigravity"
   priority: "completed"
   blockers: []
@@ -87,6 +87,7 @@ next_actions:
 
 # ─── Session Log (Append-Only) ─────────────────────────────────────────────
 session_log:
+  - "2026-05-26T14:43 [antigravity] Session teardown: Zella confirmed docs, gave SITREP, thanked the operator. Session summary captured to OpenBrain. Committed 6497033, pushed."
   - "2026-05-26T14:26 [antigravity] P0 RESOLVED: Root cause was dotenv v17 stdout pollution corrupting MCP stdio. Fixed with { quiet: true }. Made Hermes API primary universal comm channel. Updated System Manual, Protocol, SKILL.md, created IDE guide."
   - "2026-05-26T04:10 [antigravity] Added P0 blocker: Gemini credit depletion; updated next_actions for recovery"
   - "2026-05-26T04:07 [antigravity] Session teardown: Gemini API credits depleted — ingestion (85/85 failed) and session capture both blocked. Added as P0 blocker for next session."
