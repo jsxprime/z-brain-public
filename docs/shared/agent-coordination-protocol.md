@@ -123,13 +123,13 @@ curl -s http://YOUR_VM_IP:8642/v1/chat/completions \
 | Channel | Direction | Use For | MUST NOT Use For |
 |---|---|---|---|
 | **Hermes API** (`/v1/chat/completions`) | Antigravity → Zella | **All two-way communication**: notifications, questions, collaborative drafting, deployment alerts | — |
-| **z-relay MCP** (optional) | Antigravity → Zella | Same as Hermes API, but via named MCP tools (`zella_chat`, `zella_status`, etc.) | Agents MUST NOT depend on z-relay being available — always fall back to Hermes API |
+| **z-relay MCP** (optional convenience wrapper around Hermes API) | Antigravity → Zella | Same as Hermes API, but via named MCP tools (`zella_chat`, `zella_status`, etc.) | Agents MUST NOT depend on z-relay being available — always fall back to Hermes API |
 | **OpenBrain `capture`** | Both → shared | Durable state records, architectural decisions | Ephemeral messages |
 | **`docs/shared/`** (git repo) | Both → shared | Protocol docs, handoff state, shared references | Scratch files, temporary data |
 | **`handoff.yaml`** | Both → shared | Machine-parseable state snapshots | Prose or explanations |
 | **`.agent-lock.json`** | Both → shared | Workspace mutex for destructive operations | Status updates |
 
-### 4.1 Shared Workspace
+### 4.2 Shared Workspace
 
 The `docs/shared/` directory in the `jsxprime/z-brain-public` GitHub repository is the canonical shared workspace. Both agents MUST be able to read and write to it:
 

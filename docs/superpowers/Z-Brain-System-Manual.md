@@ -56,7 +56,7 @@ Raw thoughts are messy. To make them useful, the system employs an autonomous ba
 
 ## 5. Inter-Agent Communication
 
-All IDE agents (Antigravity, Claude Code, Codex, OpenCode, etc.) communicate with Zella through the **Hermes Agent API** — the same OpenAI-compatible endpoint that Telegram uses. No custom code is needed on Zella's side.
+All IDE agents (Antigravity, Claude Code, Codex, OpenCode, etc.) communicate with Zella through the **Hermes Agent API** — the same OpenAI-compatible endpoint that Telegram uses. No custom endpoint or Zella-side service changes are needed.
 
 ### A. The Hermes API (Primary — Universal)
 
