@@ -5,6 +5,9 @@ dist/
 build/
 .DS_Store
 
+# Brainstorm visual companion
+.superpowers/
+
 # SSH keys and directories
 ssh/
 */ssh/
