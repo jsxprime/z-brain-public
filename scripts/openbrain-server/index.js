@@ -19,10 +19,11 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const DATABASE_URL = process.env.DATABASE_URL;
 
-if (!GEMINI_API_KEY) {
-  console.error("Error: GEMINI_API_KEY is not defined in the environment.");
+if (!OPENROUTER_API_KEY && !GEMINI_API_KEY) {
+  console.error("Error: At least one of OPENROUTER_API_KEY or GEMINI_API_KEY must be defined.");
   process.exit(1);
 }
 
@@ -31,8 +32,10 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
+console.error(`[config] Embedding providers: ${OPENROUTER_API_KEY ? 'openrouter (primary)' : ''}${OPENROUTER_API_KEY && GEMINI_API_KEY ? ' → ' : ''}${GEMINI_API_KEY ? 'gemini-sdk (fallback)' : ''}`);
+
 // Initialize clients
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const pool = new pg.Pool({
   connectionString: DATABASE_URL,
 });
@@ -60,16 +63,14 @@ const synthesisWorker = new Worker("synthesis", async (job) => {
     
     if (thoughts.length === 0) continue;
 
-    // Use Gemini to synthesize
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Use chat completion to synthesize (OpenRouter primary, Gemini SDK fallback)
     const prompt = `You are a memory synthesizer. Review the following raw thoughts and create a comprehensive, organized Role-Specific Context Brief.
 Domain: ${domain}
 Thoughts:
 ${thoughts}
 
 Output the brief in Markdown format, combining related facts and resolving contradictions.`;
-    const result = await model.generateContent(prompt);
-    const synthesizedBrief = result.response.text();
+    const synthesizedBrief = await chatCompletion(prompt);
     
     // Save the synthesized brief as a 'persona' type thought
     const metadata = { type: "persona-v2", domain: domain, synthesized: true };
@@ -88,31 +89,134 @@ synthesisQueue.add('synthesis-cron', {}, {
   jobId: 'recurring-synthesis' // Prevents duplicate cron jobs
 });
 
-async function getEmbedding(text) {
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-    const result = await model.embedContent({
-      content: { parts: [{ text }] },
-      outputDimensionality: 768,
-    });
-    if (!result.embedding || !result.embedding.values) {
-      throw new Error("No embedding values returned from Gemini API");
-    }
-    return result.embedding.values;
-  } catch (err) {
-    console.error("Error generating embedding:", err);
-    throw err;
+/**
+ * Get embedding via OpenRouter (primary) with Gemini SDK fallback.
+ * OpenRouter uses the same gemini-embedding-2 model via OpenAI-compatible API,
+ * so vectors are compatible with existing stored embeddings.
+ */
+async function getEmbeddingViaOpenRouter(text) {
+  const response = await fetch("https://openrouter.ai/api/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-embedding-2-preview",
+      input: text,
+      dimensions: 768,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`OpenRouter ${response.status}: ${body.slice(0, 200)}`);
   }
+
+  const data = await response.json();
+  if (!data.data?.[0]?.embedding) {
+    throw new Error("No embedding values returned from OpenRouter");
+  }
+  return data.data[0].embedding;
+}
+
+async function getEmbeddingViaGeminiSDK(text) {
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+  const result = await model.embedContent({
+    content: { parts: [{ text }] },
+    outputDimensionality: 768,
+  });
+  if (!result.embedding || !result.embedding.values) {
+    throw new Error("No embedding values returned from Gemini SDK");
+  }
+  return result.embedding.values;
+}
+
+async function getEmbedding(text) {
+  // Try OpenRouter first
+  if (OPENROUTER_API_KEY) {
+    try {
+      const embedding = await getEmbeddingViaOpenRouter(text);
+      console.error("[embedding] provider: openrouter ✓");
+      return embedding;
+    } catch (err) {
+      console.error(`[embedding] openrouter failed: ${err.message}`);
+      if (!GEMINI_API_KEY) throw err; // No fallback available
+      console.error("[embedding] falling back to gemini-sdk...");
+    }
+  }
+
+  // Fallback to Gemini SDK (AI Studio)
+  if (GEMINI_API_KEY) {
+    try {
+      const embedding = await getEmbeddingViaGeminiSDK(text);
+      console.error("[embedding] provider: gemini-sdk (fallback) ✓");
+      return embedding;
+    } catch (err) {
+      console.error(`[embedding] gemini-sdk also failed: ${err.message}`);
+      throw err;
+    }
+  }
+
+  throw new Error("No embedding provider available");
+}
+
+/**
+ * Chat completion via OpenRouter (primary) with Gemini SDK fallback.
+ * Uses google/gemini-2.5-flash through OpenAI-compatible API.
+ */
+async function chatCompletion(prompt, { json = false } = {}) {
+  // Try OpenRouter first
+  if (OPENROUTER_API_KEY) {
+    try {
+      const body = {
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "user", content: prompt }],
+      };
+      if (json) {
+        body.response_format = { type: "json_object" };
+      }
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => '');
+        throw new Error(`OpenRouter ${response.status}: ${errBody.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("No content in OpenRouter chat response");
+      console.error("[chat] provider: openrouter ✓");
+      return text;
+    } catch (err) {
+      console.error(`[chat] openrouter failed: ${err.message}`);
+      if (!genAI) throw err;
+      console.error("[chat] falling back to gemini-sdk...");
+    }
+  }
+
+  // Fallback to Gemini SDK
+  if (genAI) {
+    const config = json ? { responseMimeType: "application/json" } : {};
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: config });
+    const result = await model.generateContent(prompt);
+    console.error("[chat] provider: gemini-sdk (fallback) ✓");
+    return result.response.text();
+  }
+
+  throw new Error("No chat provider available");
 }
 
 async function extractMetadata(text) {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
-    });
     const prompt = `Extract metadata from the user's captured thought. Return JSON with:
 - "people": array of strings of people mentioned (empty if none)
 - "action_items": array of strings of implied to-dos (empty if none)
@@ -121,11 +225,10 @@ async function extractMetadata(text) {
 - "type": one of "observation", "task", "idea", "reference", "person_note"
 Only extract what's explicitly there.
 Thought: ${text}`;
-    const result = await model.generateContent(prompt);
-    const textResponse = result.response.text();
+    const textResponse = await chatCompletion(prompt, { json: true });
     return JSON.parse(textResponse);
   } catch (err) {
-    console.error("Error extracting metadata, falling back to defaults:", err);
+    console.error("Error extracting metadata, falling back to defaults:", err.message);
     return { topics: ["uncategorized"], type: "observation" };
   }
 }
