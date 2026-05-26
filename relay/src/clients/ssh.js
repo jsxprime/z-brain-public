@@ -25,3 +25,20 @@ export async function queryStateDb(sql) {
     throw new Error(`Failed to parse sqlite output: ${e.message}\nOutput: ${output}`);
   }
 }
+
+export async function injectIntoActiveTelegramSession(role, content) {
+  // Find the latest telegram session
+  const getSessionSql = `SELECT id FROM sessions WHERE source="telegram" ORDER BY started_at DESC LIMIT 1`;
+  const sessionOutput = await queryStateDb(getSessionSql);
+  if (!sessionOutput || sessionOutput.length === 0) return null;
+  
+  const sessionId = sessionOutput[0].id;
+  const escapedContent = content.replace(/"/g, '\\"').replace(/'/g, "''");
+  
+  const insertSql = `INSERT INTO messages (session_id, role, content, timestamp) VALUES ("${sessionId}", "${role}", "${escapedContent}", strftime("%s", "now"))`;
+  
+  const cmd = `docker exec hermes-agent sqlite3 /opt/data/state.db "${insertSql}"`;
+  await executeSSH(cmd);
+  
+  return sessionId;
+}

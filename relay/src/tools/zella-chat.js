@@ -1,5 +1,6 @@
 import { chatCompletion } from '../clients/hermes.js';
 import { getConversation, appendToConversation } from '../cache.js';
+import { injectIntoActiveTelegramSession } from '../clients/ssh.js';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -23,8 +24,13 @@ export async function handler({ message, context, relay_to_telegram, session_id 
   }
 
   let finalMessage = message;
+  let injectionResult = null;
+  
   if (relay_to_telegram) {
-    finalMessage += "\n\n[SYSTEM INSTRUCTION: Please send a summary of this interaction to the user via Telegram.]";
+    // Proactively stick this in her active Telegram memory so she is aware of it
+    const systemPrefix = "[System: Message from IDE Agent] ";
+    injectionResult = await injectIntoActiveTelegramSession("user", systemPrefix + message).catch(e => e.message);
+    finalMessage += "\n\n[SYSTEM INSTRUCTION: I have also injected this message directly into your active Telegram session so you won't forget it.]";
   }
 
   conv.push({ role: "user", content: finalMessage });
@@ -38,6 +44,7 @@ export async function handler({ message, context, relay_to_telegram, session_id 
       content: [{ type: "text", text: JSON.stringify({
         response: reply,
         session_id: sessionId,
+        injected_to_telegram: injectionResult !== null ? injectionResult : false,
         usage: data.usage
       }, null, 2) }]
     };
