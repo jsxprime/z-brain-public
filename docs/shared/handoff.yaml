@@ -1,0 +1,103 @@
+# Agent Handoff State
+# Canonical Location: docs/shared/handoff.yaml (in jsxprime/z-brain-public repo)
+#
+# RULES (from agent-coordination-protocol.md):
+# - Both agents MUST read this at session startup
+# - Only update fields you have direct knowledge of
+# - Never overwrite the other agent's section — append or update yours
+# - Always update `updated_at` when making any change
+# - Status values MUST use the closed enum from protocol §2.1
+# - Every verified claim MUST include verified_at, verification_method, verified_by
+
+# ─── Metadata ───────────────────────────────────────────────────────────────
+handoff_id: "2026-05-26-001"
+updated_at: "2026-05-26T03:45:00-04:00"
+updated_by: "antigravity"
+
+# ─── Active Task ────────────────────────────────────────────────────────────
+task:
+  id: "fix-openbrain-stale-code"
+  summary: "OpenBrain container was running pre-Omnigraph code due to missing bind mounts"
+  status: "verified-by-both"              # Closed enum — see protocol §2.1
+  owner: "none"
+  priority: "completed"
+  blockers: []
+
+# ─── Source State ───────────────────────────────────────────────────────────
+source:
+  repo: "jsxprime/z-brain-public"               # Canonical repo name
+  repo_root: "/Volumes/nvme-2tb/ant-workspace/z-brain"
+  branch: "main"
+  commit_sha: "pending"                   # Fill at session end after commit
+  dirty_state: true                       # New files not yet committed
+  changed_files:
+    - "docs/shared/agent-coordination-protocol.md"
+    - "docs/shared/handoff.yaml"
+
+# ─── Deployment State ───────────────────────────────────────────────────────
+deployments:
+  openbrain:
+    compose_path: "~/docker/openbrain-server/docker-compose.yml"
+    container: "openbrain-server"          # Canonical name
+    image: "openbrain-server:latest"
+    action: "rebuild-and-compose-up"
+    bind_mounts:
+      - "./index.js:/app/index.js"
+      - "./.env:/app/.env"
+    network: "agent-net"
+    status: "verified-by-both"
+    verified_at: "2026-05-26T03:20:00-04:00"
+    verification_method: "Zella called all 7 MCP tools; confirmed list_domains, force_synthesis_run, and domain param on capture"
+    verified_by: ["antigravity", "zella"]
+
+  hermes-agent:
+    compose_path: "~/docker/hermes-stack/docker-compose.yml"
+    container: "hermes-agent"              # Canonical name
+    action: "restart"
+    status: "verified-live"
+    verified_at: "2026-05-26T03:19:31-04:00"
+    verification_method: "curl health/detailed — telegram connected, api_server connected"
+    verified_by: ["antigravity"]
+
+# ─── Assumptions ────────────────────────────────────────────────────────────
+# Things we believe true but have NOT directly verified this session.
+assumptions:
+  - "neo4j-memory MCP server is running and accessible from hermes-agent"
+  - "telegram_push MCP server is functional"
+  - "BullMQ synthesis worker is connecting to Redis with auth (NOAUTH fix applied but synthesis output not inspected)"
+
+# ─── Known Unknowns ────────────────────────────────────────────────────────
+# Explicitly unresolved questions — distinct from assumptions.
+known_unknowns:
+  - "Did synthesis job #3 (triggered by Zella's force_synthesis_run) produce valid persona-v2 output?"
+  - "Is the ~/workspaces/z-brain path accessible from Zella's SSH context?"
+  - "What is the correct domain taxonomy? Only 'engineering' and 'personal', or more?"
+
+# ─── Next Actions ───────────────────────────────────────────────────────────
+# Every handoff MUST end with explicit asks — not just status, but obligations.
+next_actions:
+  for_antigravity:
+    - "Commit new docs/shared/ files and push to GitHub"
+    - "Run ingest-docs.js to vectorize the coordination protocol"
+    - "Update status.md with session summary"
+    - "Clean up old docs/agent-coordination-protocol.md and docs/handoff.yaml (moved to shared/)"
+  for_zella:
+    - "Read protocol at docs/shared/agent-coordination-protocol.md via GitHub MCP"
+    - "Verify synthesis worker produced output after force_synthesis_run job #3"
+    - "Test capture with domain parameter in a real workflow"
+  for_jay:
+    - "Decide domain backfill strategy for existing 97 thoughts (confirmed: yes, will consult Zella)"
+    - "Review protocol v1.1 in docs/shared/"
+
+# ─── Session Log (Append-Only) ─────────────────────────────────────────────
+session_log:
+  - "2026-05-26T03:45 [antigravity] Incorporated Tier 1 feedback, created docs/shared/ workspace"
+  - "2026-05-26T03:33 [zella] Provided 15-point review of protocol draft"
+  - "2026-05-26T03:30 [antigravity] Drafted protocol v1.0 and handoff.yaml with Zella's input"
+  - "2026-05-26T03:21 [antigravity] Fixed Redis NOAUTH — added REDIS_URL, compose down/up"
+  - "2026-05-26T03:20 [zella] Verified all 7 openbrain tools, ran full audit (status: verified-by-both)"
+  - "2026-05-26T03:19 [antigravity] Restarted hermes-agent to refresh mcp-remote bridges"
+  - "2026-05-26T03:18 [antigravity] Created docker-compose.yml, deployed openbrain with bind mounts"
+  - "2026-05-26T03:03 [antigravity] Root cause: container had no bind mounts, running pre-Omnigraph v1.0"
+  - "2026-05-26T03:00 [antigravity] Confirmed Zella sees only 5/7 openbrain tools"
+  - "2026-05-26T02:55 [antigravity] Investigated Zella's Telegram sessions re: missing tools"
