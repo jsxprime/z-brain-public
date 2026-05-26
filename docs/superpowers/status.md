@@ -93,15 +93,19 @@ During deployment, the following major blockers were solved:
 > [!NOTE]
 > **P0 RESOLVED — Zella Communication Restored (2026-05-26)**
 >
-> **Root cause:** `dotenv` v17.4.2 prints a banner to stdout (`◇ injected env (7) from .env`) which corrupted the MCP stdio protocol. The IDE's MCP client saw non-JSON on the first line of stdout and silently disconnected.
+> **Original symptom:** z-relay MCP server never loaded in Antigravity IDE sessions. Agents always fell back to Hermes API curl.
+>
+> **Root cause #1 (found 2026-05-26 session 1):** `dotenv` v17.4.2 prints a banner to stdout which corrupted the MCP stdio protocol. Fixed with `dotenv.config({ quiet: true })`.
+>
+> **Root cause #2 (found 2026-05-26 session 3):** The z-relay config entry was added to `~/.gemini/antigravity-ide/mcp_config.json` (a stale/backup file) instead of the correct `~/.gemini/config/mcp_config.json` (the file the IDE actually reads). This is why restarting never helped — the IDE never saw the z-relay entry.
 >
 > **Resolution:**
-> 1. Made the Hermes API (`/v1/chat/completions`) the primary, universal communication method — works in any IDE, no MCP required.
-> 2. Fixed z-relay with `dotenv.config({ quiet: true })` — now works as an MCP enhancement for MCP-capable IDEs.
-> 3. Rewrote SKILL.md to use Hermes API as primary with z-relay as optional fallback.
-> 4. Updated System Manual, Agent Coordination Protocol, and created portable IDE Communication Guide.
+> 1. Added z-relay to the correct config file (`~/.gemini/config/mcp_config.json`).
+> 2. Made the Hermes API (`/v1/chat/completions`) the documented primary, universal communication method.
+> 3. Z-relay MCP is an optional convenience — agents must verify it's actually loaded before using it.
+> 4. Updated SKILL.md, System Manual, and all related docs to match what actually works.
 >
-> **Why it appeared to work before:** Agents in earlier sessions used raw `curl` to the Hermes API or direct Node.js scripts — these worked perfectly but bypassed z-relay entirely.
+> **Verification status:** Config fix applied. IDE restart required to test z-relay MCP loading. Hermes API confirmed working.
 
 - [x] **Task 1: Establish Z-Relay / Comm Link** ✅ (2026-05-26)
   - Hermes API is now the primary, universal communication channel (works in any IDE).

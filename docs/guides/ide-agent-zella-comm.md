@@ -72,9 +72,11 @@ Hermes stores every message in `state.db` (SQLite) regardless of channel. When y
 For diagnostic purposes, you can query Zella's recent sessions:
 
 ```bash
-ssh YOUR_VM_USER@YOUR_VM_IP "docker exec hermes-agent sqlite3 -json /opt/data/state.db \
-  'SELECT id, started_at, message_count FROM sessions ORDER BY started_at DESC LIMIT 5'"
+ssh YOUR_VM_USER@YOUR_VM_IP "docker exec hermes-agent python3 -c 'import sqlite3; conn = sqlite3.connect(\"/opt/data/state.db\"); cur = conn.cursor(); cur.execute(\"SELECT id, started_at, message_count FROM sessions ORDER BY started_at DESC LIMIT 5;\"); print(cur.fetchall())'"
 ```
+
+> [!NOTE]
+> The `sqlite3` CLI is not installed in the container. Use `python3` as shown above. Also, the `messages` table has no `created_at` column — order by `id` instead.
 
 ---
 
@@ -107,7 +109,7 @@ Run: `curl -s http://YOUR_VM_IP:8642/v1/chat/completions -H "Content-Type: appli
 
 ### Example: Antigravity / Gemini IDE (Skills)
 
-The Antigravity-specific skill lives at `~/.gemini/config/skills/z-brain-zella-comms/SKILL.md`. It wraps the HTTP calls with tool-specific instructions. If your IDE is MCP-capable, z-relay (`relay/src/index.js`) provides native MCP tools as an enhancement.
+The Antigravity-specific skill lives at `~/.gemini/config/skills/z-brain-zella-comms/SKILL.md`. It wraps the HTTP calls with tool-specific instructions. If your IDE is MCP-capable, z-relay (`relay/src/index.js`) provides native MCP tools as an enhancement — but it must be registered in the IDE's **global** MCP config (for Antigravity: `~/.gemini/config/mcp_config.json`, NOT `~/.gemini/antigravity-ide/mcp_config.json`).
 
 ### Example: Generic Agent (AGENTS.md / instruction file)
 
@@ -160,6 +162,8 @@ To register z-relay, add to your IDE's MCP config:
 
 > [!IMPORTANT]
 > Z-relay requires `relay/.env` to exist with valid `HERMES_API_KEY`. The HTTP API works without z-relay — z-relay is a convenience wrapper, not a requirement.
+>
+> **For Antigravity IDE:** The correct config file is `~/.gemini/config/mcp_config.json`. Do NOT add entries to `~/.gemini/antigravity-ide/mcp_config.json` — that file is not read by the IDE.
 
 ---
 

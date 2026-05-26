@@ -24,7 +24,7 @@ The foundation of the entire system.
 ### B. The Hermes Agent Stack (`hermes-stack`)
 The execution layer for autonomous AI operations.
 - **Zella (Hermes Agent):** The user's personal AI agent. She operates primarily via Telegram.
-- **Z-Relay / Telegram MCP:** A server that allows for cross-agent messaging and session injection.
+- **Z-Relay (optional MCP wrapper):** A local MCP stdio server (`relay/src/index.js` on the workstation) that wraps the Hermes API into named MCP tools for IDE agents. Not required — IDE agents can call the Hermes API directly.
 
 ### C. The OpenBrain Server (`openbrain-server`)
 The data-broker layer bridging the Agents and the CORE OS.
@@ -105,7 +105,7 @@ Include prior messages in the `messages` array, just like the OpenAI API:
 | Talk to Zella (two-way) | **Hermes API** | `POST /v1/chat/completions` |
 | Check if Zella is online | **Hermes API** | `GET /health/detailed` |
 | Share durable state across agents | **OpenBrain MCP** | `capture` tool with `domain` param |
-| Query Zella's recent sessions (diagnostic) | **SSH** | `ssh YOUR_VM_USER@YOUR_VM_IP "docker exec hermes-agent sqlite3 ..."` |
+| Query Zella's recent sessions (diagnostic) | **SSH** | `ssh YOUR_VM_USER@YOUR_VM_IP "docker exec hermes-agent python3 -c '...sqlite3...'"` |
 | MCP-native tool calls (if IDE supports it) | **z-relay MCP** | `zella_chat`, `zella_status`, etc. |
 
 ### C. Conversation History

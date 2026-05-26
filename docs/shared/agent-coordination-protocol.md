@@ -22,7 +22,7 @@
 | **Primary context** | Local repo, worktrees, live code edits | VM runtime, Docker stacks, user conversations |
 | **Strengths** | Freshest code state, file diffs, build tools | Broader system context, persistent memory, user-facing |
 | **Blind spots** | What's actually running on the VM | What changed in the repo since last session |
-| **Communication** | z-relay injection, OpenBrain capture, API calls | Telegram, OpenBrain, cron jobs |
+| **Communication** | Hermes API (curl), z-relay MCP (if loaded), OpenBrain capture | Telegram, OpenBrain, cron jobs |
 
 ---
 
@@ -123,7 +123,7 @@ curl -s http://YOUR_VM_IP:8642/v1/chat/completions \
 | Channel | Direction | Use For | MUST NOT Use For |
 |---|---|---|---|
 | **Hermes API** (`/v1/chat/completions`) | Antigravity → Zella | **All two-way communication**: notifications, questions, collaborative drafting, deployment alerts | — |
-| **z-relay MCP** (optional convenience wrapper around Hermes API) | Antigravity → Zella | Same as Hermes API, but via named MCP tools (`zella_chat`, `zella_status`, etc.) | Agents MUST NOT depend on z-relay being available — always fall back to Hermes API |
+| **z-relay MCP** (optional — verify loaded before use) | Antigravity → Zella | Same as Hermes API, but via named MCP tools (`zella_chat`, `zella_status`, etc.). Requires registration in the IDE's global MCP config (`~/.gemini/config/mcp_config.json` for Antigravity). | Agents MUST NOT depend on z-relay being available — always verify it's loaded, then fall back to Hermes API if not |
 | **OpenBrain `capture`** | Both → shared | Durable state records, architectural decisions | Ephemeral messages |
 | **`docs/shared/`** (git repo) | Both → shared | Protocol docs, handoff state, shared references | Scratch files, temporary data |
 | **`handoff.yaml`** | Both → shared | Machine-parseable state snapshots | Prose or explanations |

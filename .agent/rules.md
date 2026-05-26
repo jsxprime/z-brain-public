@@ -56,4 +56,4 @@ The Hermes Agent exposes an OpenAI-compatible API at `http://YOUR_VM_IP:8642/v1/
 - **API Key:** Stored in `relay/.env` as `HERMES_API_KEY`
 - **Full documentation:** `docs/superpowers/Z-Brain-System-Manual.md` (§5)
 - **IDE-specific setup guide:** `docs/guides/ide-agent-zella-comm.md`
-- **MCP enhancement (optional):** If your IDE supports MCP stdio servers, z-relay at `relay/src/index.js` wraps these API calls into MCP tools (`zella_chat`, `zella_status`, `zella_feed`, `zella_briefing`, `zella_share`).
+- **MCP enhancement (optional):** If your IDE supports MCP stdio servers, z-relay at `relay/src/index.js` wraps these API calls into MCP tools (`zella_chat`, `zella_status`, `zella_feed`, `zella_briefing`, `zella_share`). For Antigravity, z-relay must be registered in `~/.gemini/config/mcp_config.json` (the global config — NOT `~/.gemini/antigravity-ide/mcp_config.json`).
