@@ -58,7 +58,7 @@ Send a message to Zella and receive her response. Uses the Hermes `/v1/chat/comp
 |---|---|---|---|
 | `message` | string | yes | What to say to Zella |
 | `context` | string | no | System prompt / context for this conversation |
-| `relay_to_telegram` | boolean | no | Also forward the message to Zella's Telegram session |
+| `relay_to_telegram` | boolean | no | Ask Zella to forward a summary to the user on Telegram (v1 stretch — see notes) |
 
 **Returns:** `{ response: string, session_id: string, usage: { prompt_tokens, completion_tokens } }`
 
@@ -67,6 +67,7 @@ Send a message to Zella and receive her response. Uses the Hermes `/v1/chat/comp
 - Each call is stateless (full message history sent per request) unless a `session_id` is provided for continuity
 - The relay maintains a local conversation buffer per session so multi-turn chats work naturally
 - Conversation history is capped at a configurable token limit (default: 16k tokens) with automatic summarization of older messages
+- `relay_to_telegram`: In v1, this works by appending an instruction to the system prompt asking Zella to send a summary to the user via Telegram using her Pushover or Telegram notification tools. This is a best-effort soft relay, not a guaranteed delivery mechanism. A future version could use the Hermes API's session management to inject messages directly into the Telegram session if the API supports it.
 
 ---
 
@@ -228,7 +229,7 @@ New tools are registered by adding a file to `tools/` and importing it in `index
 
 ```env
 # .env — z-relay configuration
-HERMES_API_KEY=YOUR_HERMES_API_KEY
+HERMES_API_KEY=your_hermes_api_server_key_here
 HERMES_API_URL=http://YOUR_VM_IP:8642
 VM_HOST=YOUR_VM_IP
 VM_USER=YOUR_VM_USER
