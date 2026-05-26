@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import * as zellaStatus from "./tools/zella-status.js";
+import * as zellaChat from "./tools/zella-chat.js";
 
 export function createServer() {
   const server = new McpServer({
@@ -13,6 +14,13 @@ export function createServer() {
     zellaStatus.schema.name,
     zellaStatus.schema.description,
     zellaStatus.handler
+  );
+
+  server.tool(
+    zellaChat.schema.name,
+    zellaChat.schema.description,
+    zellaChat.schema.parameters,
+    zellaChat.handler
   );
 
   return server;
