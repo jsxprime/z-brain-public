@@ -14,30 +14,32 @@ export async function executeSSH(command) {
 }
 
 export async function queryStateDb(sql) {
-  const escapedSql = sql.replace(/"/g, '\\"');
-  // Zella's container uses sqlite3 for state.db
-  const cmd = `docker exec hermes-agent sqlite3 -json /opt/data/state.db "${escapedSql}"`;
+  const escapedSql = sql.replace(/"/g, '\\"').replace(/'/g, "\\'");
+  const pyCmd = `import sqlite3, json; conn = sqlite3.connect('/opt/data/state.db'); conn.row_factory = sqlite3.Row; cur = conn.cursor(); cur.execute('${escapedSql}'); print(json.dumps([dict(ix) for ix in cur.fetchall()]))`;
+  const b64Cmd = Buffer.from(pyCmd).toString('base64');
+  const cmd = `docker exec hermes-agent sh -c 'echo ${b64Cmd} | base64 -d | python3'`;
+  
   const output = await executeSSH(cmd);
   if (!output) return [];
   try {
     return JSON.parse(output);
   } catch (e) {
-    throw new Error(`Failed to parse sqlite output: ${e.message}\nOutput: ${output}`);
+    throw new Error(`Failed to parse sqlite output: ${e.message}\\nOutput: ${output}`);
   }
 }
 
 export async function injectIntoActiveTelegramSession(role, content) {
   // Find the latest telegram session
-  const getSessionSql = `SELECT id FROM sessions WHERE source="telegram" ORDER BY started_at DESC LIMIT 1`;
+  const getSessionSql = `SELECT id FROM sessions WHERE source='telegram' ORDER BY started_at DESC LIMIT 1`;
   const sessionOutput = await queryStateDb(getSessionSql);
   if (!sessionOutput || sessionOutput.length === 0) return null;
   
   const sessionId = sessionOutput[0].id;
-  const escapedContent = content.replace(/"/g, '\\"').replace(/'/g, "''");
+  const escapedContent = content.replace(/"/g, '\\"').replace(/'/g, "\\'");
   
-  const insertSql = `INSERT INTO messages (session_id, role, content, timestamp) VALUES ("${sessionId}", "${role}", "${escapedContent}", strftime("%s", "now"))`;
-  
-  const cmd = `docker exec hermes-agent sqlite3 /opt/data/state.db "${insertSql}"`;
+  const pyCmd = `import sqlite3; conn = sqlite3.connect('/opt/data/state.db'); cur = conn.cursor(); cur.execute('INSERT INTO messages (session_id, role, content, timestamp) VALUES (\\"${sessionId}\\", \\"${role}\\", \\"${escapedContent}\\", strftime(\\"%s\\", \\"now\\"))'); conn.commit()`;
+  const b64Cmd = Buffer.from(pyCmd).toString('base64');
+  const cmd = `docker exec hermes-agent sh -c 'echo ${b64Cmd} | base64 -d | python3'`;
   await executeSSH(cmd);
   
   return sessionId;
