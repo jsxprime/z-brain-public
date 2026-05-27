@@ -19,8 +19,8 @@ export async function handler({ content, title, persist }) {
   if (persist || content.length > 2000) {
     // Mock openbrain for v1, or actually connect to it if feasible
     // For now, we will just inform the user we are using chat.
-    const message = `The IDE agent is sharing a large document titled "${title || 'Untitled'}". Content:\n\n${content}`;
-    await chatHandler({ message, context: "System note sharing", session_id: "shared_docs" });
+    const message = `[Source: Antigravity IDE via Z-Relay] The IDE agent is sharing a large document titled "${title || 'Untitled'}". Content:\n\n${content}`;
+    await chatHandler({ message, context: "Document shared from Antigravity IDE via Z-Relay.", session_id: "shared_docs" });
     
     return {
       content: [{ type: "text", text: JSON.stringify({ delivered_via: "chat (fallback from OpenBrain)", acknowledged: true }) }]
@@ -28,8 +28,8 @@ export async function handler({ content, title, persist }) {
   }
 
   // Short content
-  const message = `I am sharing a note with you: "${title || 'Untitled'}"\n\n${content}`;
-  await chatHandler({ message, session_id: "shared_docs" });
+  const message = `[Source: Antigravity IDE via Z-Relay] Note shared: "${title || 'Untitled'}"\n\n${content}`;
+  await chatHandler({ message, context: "Note shared from Antigravity IDE via Z-Relay.", session_id: "shared_docs" });
 
   return {
     content: [{ type: "text", text: JSON.stringify({ delivered_via: "chat", acknowledged: true }) }]

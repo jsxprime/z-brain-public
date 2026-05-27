@@ -8,6 +8,8 @@ export function loadConfig(env = process.env) {
     VM_HOST: env.VM_HOST || 'YOUR_VM_IP',
     VM_USER: env.VM_USER || 'YOUR_VM_USER',
     OPENBRAIN_URL: env.OPENBRAIN_URL || 'http://YOUR_VM_IP:3040',
+    TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN || '',
+    TELEGRAM_HOME_CHANNEL: env.TELEGRAM_HOME_CHANNEL || '',
     CACHE_TTL_SECONDS: parseInt(env.CACHE_TTL_SECONDS || '60', 10),
     CHAT_MAX_TOKENS: parseInt(env.CHAT_MAX_TOKENS || '16000', 10)
   };

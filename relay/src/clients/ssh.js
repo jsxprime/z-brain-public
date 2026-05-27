@@ -28,25 +28,6 @@ export async function queryStateDb(sql) {
   }
 }
 
-export async function injectIntoActiveTelegramSession(role, content) {
-  // Find the latest telegram session
-  const getSessionSql = `SELECT id FROM sessions WHERE source='telegram' ORDER BY started_at DESC LIMIT 1`;
-  const sessionOutput = await queryStateDb(getSessionSql);
-  if (!sessionOutput || sessionOutput.length === 0) return null;
-  
-  const sessionId = sessionOutput[0].id;
-  const b64Content = Buffer.from(content).toString('base64');
-  const pyScript = `import sqlite3, sys, base64
-content = base64.b64decode("${b64Content}").decode('utf-8')
-conn = sqlite3.connect('/opt/data/state.db')
-cur = conn.cursor()
-cur.execute('INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, strftime("%s", "now"))', ('${sessionId}', '${role}', content))
-conn.commit()`;
-
-  const b64PyScript = Buffer.from(pyScript).toString('base64');
-  const cmd = `echo "${b64PyScript}" | base64 -d | ssh ${config.VM_USER}@${config.VM_HOST} "docker exec -i hermes-agent python3"`;
-  
-  await execAsync(cmd);
-  
-  return sessionId;
-}
+// injectIntoActiveTelegramSession has been removed.
+// Use the Telegram Bot API client (clients/telegram.js) for notifications instead.
+// SSH is retained only for read-only diagnostic queries (queryStateDb, executeSSH).

@@ -1,6 +1,6 @@
 import { chatCompletion } from '../clients/hermes.js';
 import { getConversation, appendToConversation } from '../cache.js';
-import { injectIntoActiveTelegramSession } from '../clients/ssh.js';
+import { sendTelegramNotification } from '../clients/telegram.js';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -10,29 +10,34 @@ export const schema = {
   parameters: {
     message: z.string().describe("What to say to Zella"),
     context: z.string().optional().describe("System prompt/context"),
-    relay_to_telegram: z.boolean().optional().describe("Ask Zella to forward to Telegram"),
+    relay_to_telegram: z.boolean().optional().describe("Push a notification to the operator's Telegram after the conversation (default: true). Set false for silent/operational messages."),
     session_id: z.string().optional().describe("Session ID for conversation continuity")
   }
 };
 
+// Source tag so Zella can identify Z-Relay / Antigravity IDE traffic
+const ZRELAY_SOURCE_TAG = '[Source: Antigravity IDE via Z-Relay]';
+const ZRELAY_SYSTEM_PREAMBLE = [
+  'You are receiving this message from the Antigravity IDE agent via the Z-Relay MCP bridge.',
+  'This is a live, real-time communication channel — not a historical record or log replay.',
+  'The IDE agent is an AI coding assistant running on the operator\'s Mac workstation.',
+].join(' ');
+
 export async function handler({ message, context, relay_to_telegram, session_id }) {
+  // Default relay_to_telegram to true
+  const shouldRelay = relay_to_telegram !== false;
   const sessionId = session_id || crypto.randomUUID();
   const conv = getConversation(sessionId);
   
-  if (conv.length === 0 && context) {
-    conv.push({ role: "system", content: context });
+  // Always inject source-identifying system message at the start of a new conversation
+  if (conv.length === 0) {
+    const systemContent = context
+      ? `${ZRELAY_SYSTEM_PREAMBLE}\n\nAdditional context: ${context}`
+      : ZRELAY_SYSTEM_PREAMBLE;
+    conv.push({ role: "system", content: systemContent });
   }
 
-  let finalMessage = message;
-  let injectionResult = null;
-  
-  if (relay_to_telegram) {
-    // Proactively stick this in her active Telegram memory so she is aware of it
-    const systemPrefix = "[System: Message from IDE Agent] ";
-    injectionResult = await injectIntoActiveTelegramSession("user", systemPrefix + message).catch(e => e.message);
-    finalMessage += "\n\n[SYSTEM INSTRUCTION: I have also injected this message directly into your active Telegram session so you won't forget it.]";
-  }
-
+  const finalMessage = `${ZRELAY_SOURCE_TAG} ${message}`;
   conv.push({ role: "user", content: finalMessage });
 
   try {
@@ -40,11 +45,26 @@ export async function handler({ message, context, relay_to_telegram, session_id 
     const reply = data.choices[0].message.content;
     conv.push({ role: "assistant", content: reply });
 
+    // Push notification to the operator's Telegram (non-blocking, fire-and-forget)
+    let telegramNotified = false;
+    if (shouldRelay) {
+      const firstLine = message.split('\n')[0].substring(0, 120);
+      const notification = `🤖 IDE Agent → Zella: ${firstLine}`;
+      sendTelegramNotification(notification)
+        .then(result => {
+          if (!result.success) {
+            console.error(`Telegram notification failed: ${result.error}`);
+          }
+        })
+        .catch(e => console.error(`Telegram notification error: ${e.message}`));
+      telegramNotified = true;
+    }
+
     return {
       content: [{ type: "text", text: JSON.stringify({
         response: reply,
         session_id: sessionId,
-        injected_to_telegram: injectionResult !== null ? injectionResult : false,
+        telegram_notified: telegramNotified,
         usage: data.usage
       }, null, 2) }]
     };
