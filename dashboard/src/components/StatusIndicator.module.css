@@ -1,0 +1,29 @@
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ok .dot {
+  background: var(--status-ok);
+  box-shadow: 0 0 4px var(--status-ok);
+}
+
+.warn .dot {
+  background: var(--status-warn);
+  box-shadow: 0 0 4px var(--status-warn);
+}
+
+.error .dot {
+  background: var(--status-error);
+  box-shadow: 0 0 4px var(--status-error);
+}

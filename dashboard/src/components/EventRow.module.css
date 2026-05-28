@@ -1,0 +1,50 @@
+.row {
+  display: grid;
+  grid-template-columns: 5rem 1fr 8rem 6rem 5.5rem;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border-subtle);
+  font-size: 0.75rem;
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+.source {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+}
+
+.label {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.who {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.completed .status { color: var(--status-ok); }
+.pending .status   { color: var(--status-info); }
+.failed .status    { color: var(--status-error); }
+.processing .status { color: var(--status-warn); }
+
+.time {
+  color: var(--text-muted);
+  text-align: right;
+}
