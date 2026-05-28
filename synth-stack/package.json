@@ -1,0 +1,30 @@
+{
+  "name": "z-brain-memory-synthesizer",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Durable event ingestion pipeline for the Z-Brain ecosystem. Monitors Zulip and Wiki.js, extracts context via LLM, commits to OpenBrain.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "node src/db/migrate.js"
+  },
+  "keywords": [
+    "z-brain",
+    "memory",
+    "synthesizer"
+  ],
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "fastify": "^5.8.5",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
+  }
+}
