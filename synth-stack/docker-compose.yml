@@ -1,0 +1,54 @@
+# Memory Synthesizer Stack
+# Joins the shared agent-net network so it can reach:
+#   - openbrain-server (OpenBrain MCP at port 3040)
+#   - hermes-agent (LLM API at port 8642)
+#   - core-app (Z-Cortex at port 3033)
+
+services:
+  # Dedicated Postgres for the Synthesizer
+  # Completely independent from core-postgres (core_brain)
+  synth-postgres:
+    image: postgres:15-alpine
+    container_name: synth-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SYNTH_DB_NAME}
+      POSTGRES_USER: ${SYNTH_DB_USER}
+      POSTGRES_PASSWORD: ${SYNTH_DB_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - agent-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SYNTH_DB_USER} -d ${SYNTH_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # The Memory Synthesizer daemon
+  synth-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synth-app
+    restart: unless-stopped
+    ports:
+      - "3080:3080"
+    env_file:
+      - .env
+    depends_on:
+      synth-postgres:
+        condition: service_healthy
+    networks:
+      - agent-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.synth.rule=Host(`synth.example.com`)"
+      - "traefik.http.routers.synth.entrypoints=websecure"
+      - "traefik.http.routers.synth.tls=true"
+      - "traefik.http.routers.synth.tls.certresolver=cloudflare"
+      - "traefik.http.services.synth.loadbalancer.server.port=3080"
+
+networks:
+  agent-net:
+    external: true
