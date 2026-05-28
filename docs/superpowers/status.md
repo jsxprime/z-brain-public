@@ -1,15 +1,34 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-05-28T01:17:00-04:00 (Session: 8dcc1fc9)
-## Current State — Healthy ✅
+> Last updated: 2026-05-28T18:20:00-04:00 (Session: 9f4a44a1)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠
+
+### Core Services
 - ✅ **CORE Memory Pipeline** — running, OpenRouter limit increased.
 - ✅ **Hermes Agent (Zella)** — online, fallback chain properly restored to `openai`.
-- ✅ **CLI Chat Plugin** — deployed, all 3 CLIs operational (Claude, Codex, Antigravity).
-- ✅ **Host-Ops Daemon** — running as systemd service, port 8650.
-- ✅ **OpenBrain Capture** — MCP SSE capture working, CLI turns indexed automatically.
-- ✅ **Memory Ingest** — MCP tool working.
-- ✅ **Memory Search** — vector similarity search returning results.
-- ✅ **Skill Sync Permissions** — fixed. `tar` now ignores permissions during SSH extraction, and validation spam from MCP pings has been silenced.
+- ✅ **OpenBrain Server** — running at `core.zb.example.com`.
+- ✅ **Memory Ingest / Search** — MCP tools working.
+
+### Z-Brain Ecosystem (NEW — deployed this session)
+- ✅ **Traefik** — reverse proxy with Let's Encrypt wildcard cert for `*.zb.example.com` (Cloudflare DNS-01 challenge).
+- ✅ **Zulip** — chat at `chat.zb.example.com`. Topic-threaded. Outgoing webhooks → Synthesizer.
+- ✅ **Wiki.js** — wiki at `wiki.zb.example.com`. GraphQL poller → Synthesizer (5-min interval).
+- ✅ **Memory Synthesizer** — Node.js daemon at `synth.zb.example.com`. Processes Zulip/Wiki.js events through LLM, commits to OpenBrain. Queue: 8 completed, 0 failed.
+- ✅ **Z-Brain Dashboard** — Next.js control center at `dash.zb.example.com`. Pipeline view, quarantine review, memory browser, service health.
+- ✅ **synth-postgres** — dedicated Postgres for Synthesizer (database: `synthesizer_db`), isolated from core_brain.
+
+### Container Inventory (22 containers on VM YOUR_VM_IP)
+| Stack | Containers |
+|-------|-----------|
+| core-stack | core-app, core-postgres, core-redis, core-neo4j, openbrain-server |
+| hermes-stack | hermes-agent |
+| traefik | traefik |
+| zulip-stack | zulip, zulip-database, zulip-memcached, zulip-rabbitmq, zulip-redis |
+| wikijs-stack | wikijs, wikijs-database |
+| synth-stack | synth-app, synth-postgres |
+| dashboard | zbrain-dashboard |
+| other | portainer, dockge, zella-speedtest |
+
 ## Provider Configuration
 
 | Component | Provider | Model | Endpoint |
@@ -20,15 +39,32 @@
 | OpenBrain Server (Chat) | OpenRouter | `openai/gpt-4o-mini` | `https://openrouter.ai/api/v1` |
 | OpenBrain Server (Embed) | OpenRouter | `google/gemini-embedding-2-preview` | `https://openrouter.ai/api/v1` |
 | OpenBrain (Fallback) | Ollama (local) | `gemma4:26b-mlx` | `http://YOUR_OLLAMA_HOST:11434/api/chat` |
+| Synthesizer LLM | Hermes Agent | via `hermes-agent:8642` | Internal Docker network |
 
 ## Session Work Completed
 
 **Next Session Priority**
-- Brainstorm: CLI passthrough mode (direct Telegram-to-CLI without Zella intermediating)
-- Brainstorm: Agent+Human wiki built on memory systems (browsable, searchable, editable)
-- Brainstorm: Self-hosted Discord-like chat platform for multi-agent communication
+- **Phase 2: Agent Tooling** — Build MCP tools for Hermes/Zella to post in Zulip and write Wiki.js pages
+- **Synthesizer control tools** — pause/resume ingestion, force reprocess, backfill
+- **Dashboard polish** — use `impeccable` skill to refine the UI now that real data is flowing
+- Investigate/Fix: Zella's `terminal.backend` is set to `ssh` — reconfigure local executor
 
-**Session 8dcc1fc9 (Current)**
+**Session 0faa5955 (Current)**
+Deployed and hardened the Z-Brain Memory Synthesizer ecosystem:
+1. **Z-Brain Dashboard:** Fixed routing and connection issues for the `zbrain-dashboard` container. Restored proper connection to `synth-postgres` for real-time queue stats and health statuses of OpenBrain, Hermes, and the Synthesizer.
+2. **Wiki.js GraphQL Poller:** Pivoted from broken Wiki.js native webhooks to a custom Pull-Based GraphQL Poller. The Synthesizer now runs a daemon querying `http://wikijs:3000/graphql` every 5 minutes, tracking `last_event_timestamp` in Postgres to achieve idempotency and fault-tolerance.
+3. **Environment Sync Fix:** Resolved a critical `LLM API error: 401 Unauthorized` extraction failure caused by an accidental rsync overwrite of the `.env` file on the VM. Hardened the `LLM_API_KEY` configuration.
+
+**Session 9f4a44a1 (Current — Architecture & Planning)**
+Designed, planned, and orchestrated the complete Z-Brain Ecosystem build:
+1. **Architecture Design** — Ran superbrainstorming with cross-model critique (Claude Opus 4.7 + ChatGPT 5.5). Finalized Zulip (chat) + Wiki.js (wiki) + Postgres-backed Memory Synthesizer + Next.js Dashboard.
+2. **Phase 1A Plan** — Wrote 2,247-line TDD implementation plan for the Memory Synthesizer Pipeline (15 tasks, 16 tests). Handed to Gemini 3.1 Pro for execution.
+3. **Phase 1B Plan** — Wrote 1,971-line implementation plan for the Z-Brain Dashboard (17 tasks). Handed to Gemini 3.1 Pro for execution.
+4. **Deployment Plan** — Wrote deployment plan covering Traefik (wildcard TLS for `*.zb.example.com`), Zulip, Wiki.js, Synthesizer, and Dashboard. Handed for execution.
+5. **Key Decisions** — Dedicated `synth-postgres` (not SQLite), `SELECT FOR UPDATE SKIP LOCKED` queue pattern, confidence-based quarantine (< 60%), OKLCH dark theme for dashboard.
+
+**Session 0faa5955 (Previous)**
+
 Built and deployed the complete Zella CLI Proxy system:
 1. **Host-Ops Daemon** — Node.js Express server at `YOUR_VM_IP:8650`, systemd-managed, runs as `hermes` user. Handles CLI routing, workspace diffing, thread management (SQLite), and async OpenBrain capture via MCP SSE.
 2. **CLI Chat Plugin v2** — Hermes native plugin with per-CLI tools (`ask_claude`, `ask_codex`, `ask_antigravity`) plus shared utilities (`list_threads`, `archive_thread`, `fetch_artifact`). Flat Hermes schema format, `handler(args, **kwargs)` dispatch pattern.
