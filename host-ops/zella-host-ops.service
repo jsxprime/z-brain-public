@@ -1,0 +1,33 @@
+[Unit]
+Description=Zella Host-Ops Daemon — CLI Proxy for Hermes Agent
+After=network.target docker.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+WorkingDirectory=/home/hermes/host-ops
+EnvironmentFile=/home/hermes/host-ops/.env
+ExecStart=/usr/bin/node /home/hermes/host-ops/server.js
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/home/hermes/zella-workspace /home/hermes/.zella /home/hermes/host-ops
+PrivateTmp=true
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zella-host-ops
+
+[Install]
+WantedBy=multi-user.target

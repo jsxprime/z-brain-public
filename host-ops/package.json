@@ -1,0 +1,18 @@
+{
+  "name": "zella-host-ops",
+  "version": "1.0.0",
+  "description": "Host-Ops daemon for Zella CLI Proxy — manages headless CLI sessions and OpenBrain capture",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
