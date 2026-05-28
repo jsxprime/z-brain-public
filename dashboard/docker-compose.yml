@@ -1,0 +1,28 @@
+# Z-Brain Dashboard
+# Connects to synth-postgres for pipeline data,
+# and to openbrain-server / hermes-agent for service health.
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zbrain-dashboard
+    restart: unless-stopped
+    ports:
+      - "3090:3090"
+    env_file:
+      - .env
+    networks:
+      - agent-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`dash.example.com`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=cloudflare"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=3090"
+
+networks:
+  agent-net:
+    external: true
