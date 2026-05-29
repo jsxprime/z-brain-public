@@ -5,6 +5,7 @@ import { createPool } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
 import { registerZulipWebhook } from './webhooks/zulip.js';
 import { registerWikiJsWebhook } from './webhooks/wikijs.js';
+import { WikiJsPoller } from './pollers/wikijs.js';
 import { registerMcpRoutes } from './mcp/transport.js';
 import { registerHealthRoutes } from './health.js';
 import { startWorker } from './queue/worker.js';
@@ -45,13 +46,18 @@ async function main() {
   const worker = startWorker(pool, config);
   console.log(`  Worker started (poll interval: ${config.worker.pollIntervalMs}ms)`);
 
-  // 7. Start listening
+  // 7. Start the Wiki.js Poller
+  const wikiPoller = new WikiJsPoller(pool, config);
+  wikiPoller.start();
+
+  // 8. Start listening
   await app.listen({ port: config.server.port, host: config.server.host });
   console.log(`🧠 Memory Synthesizer listening on ${config.server.host}:${config.server.port}`);
 
   // Graceful shutdown
   const shutdown = async (signal) => {
     console.log(`\n${signal} received. Shutting down gracefully...`);
+    wikiPoller.stop();
     worker.stop();
     await app.close();
     await pool.end();

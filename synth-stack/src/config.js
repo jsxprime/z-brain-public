@@ -53,8 +53,9 @@ export function loadConfig() {
     },
     wikijs: {
       webhookSecret: process.env.WIKIJS_WEBHOOK_SECRET || '',
-      apiUrl: process.env.WIKIJS_API_URL || '',
+      apiUrl: process.env.WIKIJS_API_URL || 'http://wikijs:3000/graphql',
       apiKey: process.env.WIKIJS_API_KEY || '',
+      pollIntervalMs: parseInt(process.env.WIKIJS_POLL_INTERVAL_MS || '300000', 10),
     },
     openbrain: {
       url: process.env.OPENBRAIN_URL,
