@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh YOUR_VM_IP 'docker ps --format \"table {{.Names}}\\\\t{{.Status}}\\\\t{{.Ports}}\" 2>&1')",
+      "Bash(ssh YOUR_VM_IP 'ls ~/docker/ 2>&1; echo \"---\"; ls ~/docker/hermes-stack/ 2>&1; echo \"---\"; ls ~/docker/core-stack/ 2>&1')",
+      "Bash(ssh YOUR_VM_IP 'curl -s -o /dev/null -w \"hermes 8642: %{http_code}\\\\n\" --max-time 5 http://localhost:8642/v1/models; curl -s -o /dev/null -w \"hermes 9119: %{http_code}\\\\n\" --max-time 5 http://localhost:9119/; curl -s -o /dev/null -w \"core 3033: %{http_code}\\\\n\" --max-time 5 http://localhost:3033/health; curl -s -o /dev/null -w \"openbrain 3040: %{http_code}\\\\n\" --max-time 5 http://localhost:3040/health')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h --tail 500 hermes-agent 2>&1 | tail -200')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h --tail 500 core-app 2>&1 | tail -200')",
+      "Bash(ssh YOUR_VM_IP 'ls -la ~/docker/hermes-stack/data/ 2>&1; echo \"---\"; docker exec hermes-agent ls -la /app/data/ 2>&1 | head -20')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h hermes-agent 2>&1 | grep -iE \"openrouter|key limit|403|429|fallback\" | grep -viE \"validation error\" | head -50')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h hermes-agent 2>&1 | grep -iE \"Unknown tool|mcp_neo4j|tool error\" | sort -u | head -30')",
+      "Bash(ssh YOUR_VM_IP 'sudo docker exec core-redis sh -c \"cat /usr/local/etc/redis/redis.conf 2>/dev/null | grep -i requirepass; env | grep -i pass\" 2>&1 | head -10; echo \"---\"; sudo grep -i REDIS_PASSWORD ~/docker/core-stack/docker-compose.yml 2>&1 | head -5')",
+      "Bash(ssh YOUR_VM_IP 'sudo ls -la ~/docker/hermes-stack/data/ 2>&1 | head -20')",
+      "Bash(ssh YOUR_VM_IP 'sudo ls -la ~/docker/hermes-stack/data/config.yaml ~/docker/hermes-stack/data/SOUL.md ~/docker/hermes-stack/data/.env 2>&1; echo \"---\"; echo \"Container UID mapping:\"; docker exec hermes-agent id 2>&1')",
+      "Bash(ssh YOUR_VM_IP 'sudo head -80 ~/docker/hermes-stack/data/config.yaml 2>&1')",
+      "Bash(ssh YOUR_VM_IP 'grep -E \"REDIS_PASSWORD\" ~/docker/core-stack/.env 2>/dev/null | head -2; echo \"---\"; sudo cat ~/docker/core-stack/.env 2>/dev/null | grep REDIS_PASSWORD | head -2')",
+      "Bash(ssh YOUR_VM_IP 'docker exec hermes-agent ps -ef 2>&1 | head -15; echo \"---\"; docker exec hermes-agent ls -la /opt/data/config.yaml /opt/data/SOUL.md /opt/data/.env 2>&1')",
+      "Bash(ssh YOUR_VM_IP 'docker inspect hermes-agent --format \"{{.Config.User}} | {{json .Config.Cmd}} | RestartedAt={{.State.StartedAt}}\" 2>&1; echo \"---\"; docker logs hermes-agent 2>&1 | head -50')",
+      "Bash(ssh YOUR_VM_IP 'docker exec -e REDISCLI_AUTH=coreredis1234 core-redis redis-cli INFO keyspace 2>&1; echo \"---\"; for q in ingest preprocess session-compaction label-assignment title-generation integration-run scratchpad-scan conversation-title ingest-episode; do c=$\\(docker exec -e REDISCLI_AUTH=coreredis1234 core-redis redis-cli ZCARD \"bull:$q:failed\" 2>&1\\); echo \"$q failed=$c\"; done')",
+      "Bash(ssh YOUR_VM_IP 'docker exec hermes-agent sh -c \"id; cat /opt/data/config.yaml | head -5\" 2>&1; echo \"---\"; docker exec --user hermes hermes-agent sh -c \"id; cat /opt/data/config.yaml | head -5\" 2>&1')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h hermes-agent 2>&1 | grep -E \"config|Failed to parse\" | grep -viE \"validation error\" | head -30')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h hermes-agent 2>&1 | grep -viE \"validation error|notifications/\\(prompts|resources|tools|elicitation|tasks|cancelled|progress|message\\)|literal_error|errors.pydantic.dev|ServerNotification|^[A-Z][a-zA-Z]+Notification\\\\.|^  Input should|^  Field required|^    For further|^tar:\" | grep -iE \"ERROR|WARN|Fail|⚠|❌|🚨\" | tail -100')",
+      "Bash(ssh YOUR_VM_IP 'sudo find ~/docker/hermes-stack/data -maxdepth 2 -name \"*.db\" 2>/dev/null; echo \"---\"; sudo ls -la ~/docker/hermes-stack/data/skills/ 2>&1 | head -20')",
+      "Bash(ssh YOUR_VM_IP 'curl -s http://localhost:3040/health 2>&1; echo \"---\"; docker logs --since 36h --tail 50 openbrain-server 2>&1 | tail -30')",
+      "Bash(ssh YOUR_VM_IP 'sudo find ~/docker/hermes-stack/data/skills -user root -type f 2>/dev/null | head -40; echo \"---ROOT-OWNED COUNT---\"; sudo find ~/docker/hermes-stack/data/skills -user root -type f 2>/dev/null | wc -l')",
+      "Bash(ssh YOUR_VM_IP 'docker logs --since 36h core-app 2>&1 | grep -iE \"error|fail|403|429|exceed\" | grep -viE \"Completed: [0-9]+|Failed: 0\" | tail -30')",
+      "Bash(ssh YOUR_VM_IP 'sudo sqlite3 ~/docker/hermes-stack/data/state.db \"SELECT datetime\\(created_at, \\\\\"unixepoch\\\\\"\\), platform, count\\(*\\) FROM messages GROUP BY platform ORDER BY 1 DESC LIMIT 5\" 2>&1; echo \"---SCHEMA---\"; sudo sqlite3 ~/docker/hermes-stack/data/state.db \".tables\" 2>&1')",
+      "Read(//Users/YOUR_USER/.gemini/antigravity-ide/brain/8dcc1fc9-5f5b-4943-8f07-c9d0b6adc9c7/**)"
+    ],
+    "additionalDirectories": [
+      "/Volumes/nvme-2tb/ant-workspace/z-brain/docs/reports/claude"
+    ]
+  }
+}
