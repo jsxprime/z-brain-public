@@ -20,11 +20,8 @@ import { createMcpServer } from './server.js';
  * @param {object} config
  */
 export function registerMcpRoutes(app, pool, config) {
-  // Session store: maps sessionId → transport
+  // Session store: maps sessionId → { transport, server }
   const sessions = new Map();
-
-  // Create the MCP server (tools are registered here)
-  const mcpServer = createMcpServer(pool, config);
 
   // Handle JSON-RPC messages via POST /mcp
   app.post('/mcp', {
@@ -35,18 +32,19 @@ export function registerMcpRoutes(app, pool, config) {
 
     if (sessionId && sessions.has(sessionId)) {
       // Reuse existing session
-      transport = sessions.get(sessionId);
+      transport = sessions.get(sessionId).transport;
     } else if (!sessionId && isInitializeRequest(request.body)) {
-      // New session — create transport and connect
+      // New session — create a fresh MCP server + transport pair
+      const mcpServer = createMcpServer(pool, config);
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Use default UUID generator
       });
 
-      // Connect MCP server to this transport
+      // Connect this server to this transport
       await mcpServer.connect(transport);
 
       // Store the session
-      sessions.set(transport.sessionId, transport);
+      sessions.set(transport.sessionId, { transport, server: mcpServer });
 
       // Cleanup on close
       transport.onclose = () => {
