@@ -11,3 +11,4 @@ build/
 # SSH keys and directories
 ssh/
 */ssh/
+.worktrees/
