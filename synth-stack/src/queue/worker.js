@@ -26,6 +26,17 @@ export async function processBatch(pool, config) {
   try {
     await client.query('BEGIN');
 
+    // Check if the worker is paused
+    const pauseResult = await client.query(
+      `SELECT value FROM system_config WHERE key = 'worker_paused'`
+    );
+    const isPaused = pauseResult.rows[0]?.value === 'true';
+
+    if (isPaused) {
+      await client.query('COMMIT');
+      return;
+    }
+
     // Fetch and lock a batch of pending or retriable events
     const { rows: events } = await client.query(
       `SELECT id, source, source_id, source_url, payload, retry_count
