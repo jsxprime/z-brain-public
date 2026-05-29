@@ -50,6 +50,7 @@ export function loadConfig() {
       apiUrl: process.env.ZULIP_API_URL || '',
       botEmail: process.env.ZULIP_BOT_EMAIL || '',
       botApiKey: process.env.ZULIP_BOT_API_KEY || '',
+      hostHeader: process.env.ZULIP_HOST_HEADER || '',
     },
     wikijs: {
       webhookSecret: process.env.WIKIJS_WEBHOOK_SECRET || '',

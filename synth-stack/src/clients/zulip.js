@@ -36,12 +36,21 @@ export async function postMessage(config, { type, to, topic, content }) {
   // HTTP Basic Auth: base64(email:apiKey)
   const credentials = Buffer.from(`${config.zulip.botEmail}:${config.zulip.botApiKey}`).toString('base64');
 
+  const headers = {
+    'Authorization': `Basic ${credentials}`,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  // Zulip rejects requests where the Host header doesn't match its EXTERNAL_HOST.
+  // When calling via Docker internal DNS (e.g. http://zulip:80), we must override
+  // the Host header to match what Zulip expects (e.g. chat.zb.example.com).
+  if (config.zulip.hostHeader) {
+    headers['Host'] = config.zulip.hostHeader;
+  }
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers,
     body: params.toString(),
   });
 
