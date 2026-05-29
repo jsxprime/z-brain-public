@@ -47,9 +47,14 @@ export function loadConfig() {
     },
     zulip: {
       webhookSecret: process.env.ZULIP_WEBHOOK_SECRET || '',
+      apiUrl: process.env.ZULIP_API_URL || '',
+      botEmail: process.env.ZULIP_BOT_EMAIL || '',
+      botApiKey: process.env.ZULIP_BOT_API_KEY || '',
     },
     wikijs: {
       webhookSecret: process.env.WIKIJS_WEBHOOK_SECRET || '',
+      apiUrl: process.env.WIKIJS_API_URL || '',
+      apiKey: process.env.WIKIJS_API_KEY || '',
     },
     openbrain: {
       url: process.env.OPENBRAIN_URL,
