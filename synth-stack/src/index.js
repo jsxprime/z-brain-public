@@ -6,7 +6,7 @@ import { runMigrations } from './db/migrate.js';
 import { registerZulipWebhook } from './webhooks/zulip.js';
 import { registerWikiJsWebhook } from './webhooks/wikijs.js';
 import { WikiJsPoller } from './pollers/wikijs.js';
-import { registerMcpRoutes } from './mcp/transport.js';
+import { startMcpServer } from './mcp/raw-transport.js';
 import { registerHealthRoutes } from './health.js';
 import { startWorker } from './queue/worker.js';
 
@@ -40,7 +40,9 @@ async function main() {
   registerHealthRoutes(app, pool);
   registerZulipWebhook(app, pool, config);
   registerWikiJsWebhook(app, pool, config);
-  registerMcpRoutes(app, pool, config);
+  // MCP runs on a separate Express server (port 3081) because
+  // Fastify's reply.hijack() breaks SSE streams with Hermes/mcp-remote.
+  startMcpServer(pool, config, 3081);
 
   // 6. Start the queue worker
   const worker = startWorker(pool, config);

@@ -81,9 +81,9 @@ agent:
   reasoning_effort: medium
   verbose: false
 terminal:
-  backend: ssh
+  backend: local
   modal_mode: auto
-  cwd: /home/YOUR_VM_USER/workspaces
+  cwd: /opt/data/workspace
   timeout: 300
   env_passthrough: []
   shell_init_files: []
@@ -105,10 +105,6 @@ terminal:
   docker_run_as_host_user: false
   persistent_shell: true
   lifetime_seconds: 300
-  ssh_host: YOUR_VM_IP
-  ssh_key: /opt/data/.ssh/id_ed25519
-  ssh_port: 22
-  ssh_user: YOUR_VM_USER
 web:
   backend: ''
   search_backend: ''
@@ -179,52 +175,52 @@ bedrock:
     trace: disabled
 auxiliary:
   vision:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 120
     extra_body: {}
     download_timeout: 30
   web_extract:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 360
     extra_body: {}
   compression:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 120
     extra_body: {}
   session_search:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 30
     extra_body: {}
     max_concurrency: 3
   skills_hub:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 30
     extra_body: {}
   approval:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 30
     extra_body: {}
   mcp:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 30
@@ -237,15 +233,15 @@ auxiliary:
     timeout: 30
     extra_body: {}
   triage_specifier:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 120
     extra_body: {}
   curator:
-    provider: openai
-    model: gpt-4o-mini
+    provider: openrouter
+    model: openai/gpt-4o-mini
     base_url: ''
     api_key: ''
     timeout: 600

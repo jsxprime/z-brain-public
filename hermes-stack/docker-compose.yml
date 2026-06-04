@@ -2,7 +2,7 @@
 
 services:
   hermes-agent:
-    image: nousresearch/hermes-agent:latest
+    image: nousresearch/hermes-agent@sha256:52d353b47aaae912a3018f80f4ee72ff49f940a0ff5613e4983d18328bbccc8a  # v0.15.2
     container_name: hermes-agent
     restart: unless-stopped
     command: gateway run
@@ -10,14 +10,17 @@ services:
       - "8642:8642"
       - "9119:9119"
     environment:
+      - HERMES_HOME=/opt/data
       - API_SERVER_ENABLED=true
       - API_SERVER_HOST=0.0.0.0
       - API_SERVER_KEY=${API_SERVER_KEY}
       - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_INSECURE=1
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
     volumes:
       - ./data:/opt/data
       - ./cli-secrets:/opt/data/cli-secrets
+      - ./mcp:/opt/mcp
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - agent-net
