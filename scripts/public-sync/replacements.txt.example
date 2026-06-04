@@ -1,0 +1,30 @@
+***REMOVED*** (TEMPLATE)
+# Copy this to replacements.txt and fill in your actual values.
+replacement==>replacement
+
+***REMOVED***
+YOUR_ACTUAL_HERMES_API_KEY==>YOUR_HERMES_API_KEY
+YOUR_ACTUAL_HOST_OPS_SECRET==>YOUR_HOST_OPS_SECRET
+YOUR_ACTUAL_GITHUB_PAT==>YOUR_GITHUB_PAT
+
+***REMOVED***
+YOUR_VM_IP_ADDRESS==>YOUR_VM_IP
+YOUR_OLLAMA_IP_ADDRESS==>YOUR_OLLAMA_HOST
+
+***REMOVED***
+YOUR_VM_SSH_USERNAME==>YOUR_VM_USER
+
+# --- Domain (catches ALL subdomains) ---
+your-real-domain.xyz==>example.com
+
+***REMOVED***
+your-real-email@gmail.com==>user@example.com
+
+***REMOVED***
+/Users/your-mac-username/==>/Users/YOUR_USER/
+
+# --- Personal name (regex with word boundary) ---
+regex:\bYourName\b==>the operator
+
+# --- Private repo references ---
+regex:your-github-user/your-private-repo(?!-public)==>your-github-user/your-public-repo

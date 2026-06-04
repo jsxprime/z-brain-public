@@ -1,0 +1,6 @@
+# Git mailmap for anonymizing commit authors in the public repo.
+# Format: New Name <new@email> Old Name <old@email>
+# Copy to mailmap.txt and fill in your actual identities.
+
+Z-Brain Dev <zbrain-dev@your-domain.example> Your Name <your-actual@email.com>
+Z-Brain Dev <zbrain-dev@your-domain.example> Your GitHub Username <your-github-noreply@users.noreply.github.com>

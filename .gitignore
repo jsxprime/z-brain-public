@@ -11,4 +11,8 @@ build/
 # SSH keys and directories
 ssh/
 */ssh/
+
+# Public sync config (contains real secrets as search patterns)
+scripts/public-sync/replacements.txt
+scripts/public-sync/mailmap.txt
 .worktrees/
