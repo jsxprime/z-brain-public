@@ -1,29 +1,29 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-02T22:09:00-04:00 (Session: 05c2bb51)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | synth-mcp ✅ RESOLVED
+> Last updated: 2026-06-03T22:47:00-04:00 (Session: 1a6a81be)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | synth-mcp ✅ FULLY OPERATIONAL
 
 ### Core Services
 - ✅ **CORE Memory Pipeline** — v0.7.14 (`764b5cea`), running. Upstream Ollama fix included.
-- ✅ **Hermes Agent (Zella)** — v0.15.1 (pinned `sha256:dacca4ae`), **6/6 MCP servers connected**, all platforms connected.
-- ✅ **synth-mcp** — SSE connection stable. Fixed by replacing MCP SDK's `SSEServerTransport` with raw `http.createServer()` implementation (`raw-transport.js`). 7/7 restart tests passed. **⚠️ ARCH REVIEW NEEDED:** Current raw SSE is custom code on deprecated protocol. Future session should evaluate Streamable HTTP or stdio shim migration.
+- ✅ **Hermes Agent (Zella)** — v0.15.2 (pinned `sha256:52d353b4`), **6/6 MCP servers connected**, all platforms connected. s6-overlay supervised gateway.
+- ✅ **synth-mcp** — FULLY OPERATIONAL. Fixed triple bug: (1) config entry was under `streaming:` instead of `mcp_servers:`, (2) URL pointed to wrong port (3080→3081), (3) raw-transport.js imported diagnostic minimal server instead of real server. All 8 tools verified working: `wikijs_create_page`, `wikijs_update_page`, `zulip_post_message`, `synthesizer_status`, `synthesizer_pause`, `synthesizer_resume`, `synthesizer_force_reprocess`, `synthesizer_backfill`.
 - ✅ **OpenBrain Server** — running at `core.zb.example.com`.
 - ✅ **Memory Ingest / Search** — MCP tools working.
 
 ### Z-Brain Ecosystem
 - ✅ **Traefik** — reverse proxy with Let's Encrypt wildcard cert for `*.zb.example.com` (Cloudflare DNS-01 challenge). Confirmed NOT interfering with Docker-internal traffic (verified via live curl from hermes-agent to synth-app:3081).
 - ✅ **Zulip** — chat at `chat.zb.example.com`. Topic-threaded. Outgoing webhooks → Synthesizer.
-- ✅ **Wiki.js** — wiki at `wiki.zb.example.com`. GraphQL poller → Synthesizer (5-min interval).
+- ✅ **Wiki.js** — wiki at `wiki.zb.example.com`. GraphQL poller → Synthesizer (5-min interval). Zella successfully published article (page ID: 5).
 - ✅ **Memory Synthesizer** — Node.js daemon at `synth.zb.example.com`. Processes Zulip/Wiki.js events through LLM, commits to OpenBrain. Queue: 9 completed, 0 failed. **MCP server at :3081/sse with raw HTTP transport + full instrumentation.**
 - ✅ **Z-Brain Dashboard** — Next.js control center at `dash.zb.example.com`. Pipeline view, quarantine review, memory browser, service health.
 - ✅ **synth-postgres** — dedicated Postgres for Synthesizer (database: `synthesizer_db`), isolated from core_brain.
 
 ### Phase 2: Agent Tooling
-- ✅ **synth-mcp** — MCP server running, tools verified end-to-end. Zella can call `mcp_synth_mcp_ping` and all synth-mcp tools.
+- ✅ **synth-mcp** — MCP server running, ALL tools verified end-to-end. Zella confirmed 8/8 tools operational.
 - ✅ **Zulip posting** — `zulip_post_message` tool verified end-to-end
-- ✅ **Wiki.js pages** — `wikijs_create_page`, `wikijs_update_page` tools deployed
+- ✅ **Wiki.js pages** — `wikijs_create_page`, `wikijs_update_page` tools verified end-to-end (Zella published article successfully)
 - ✅ **Pipeline controls** — `synthesizer_pause`, `synthesizer_resume`, `synthesizer_status`, `synthesizer_force_reprocess`, `synthesizer_backfill`
-- ✅ **Zella SOUL.md** — Updated with tool usage guidance, loaded fresh each message
+- ✅ **Zella SOUL.md** — Updated with Execution Context section (container awareness, direct path access, Docker socket restrictions)
 - ✅ **system_config table** — Durable pause/resume state persisted in Postgres
 
 ### Container Inventory (22 containers on VM YOUR_VM_IP)
@@ -37,6 +37,16 @@
 | synth-stack | synth-app, synth-postgres |
 | dashboard | zbrain-dashboard |
 | other | portainer, dockge, zella-speedtest |
+
+### Docker Image Pinning
+All images are now pinned to SHA256 digests to prevent unexpected upgrades:
+| Image | Tag | Digest |
+|-------|-----|--------|
+| nousresearch/hermes-agent | v0.15.2 | `sha256:52d353b4...` |
+| pgvector/pgvector | pg15 | `sha256:bd12d678...` |
+| neo4j | 5-community | `sha256:0b5d3ab6...` |
+| redis | 7-alpine | `sha256:6ab0b6e7...` |
+| postgres | 15-alpine | `sha256:df7bca00...` |
 
 ## Provider Configuration
 
@@ -64,13 +74,22 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 **🔴 NEXT SESSION PRIORITY — READ FIRST**
 - **Transition Z-Brain from experimentation to real work** — Infrastructure is 9/10 but utilization is 3/10. Pick a Tier 1 use case (daily briefing, research assistant, or project status tracking) and make it work end-to-end. See brainstorm artifact in session `05c2bb51`.
+- **DeepInfra model routing** — the operator requested: make DeepInfra the provider when Nemotron Super 3 is chosen through OpenRouter. NOT STARTED.
 - **Temporal reasoning improvements** — Extraction prompts need temporal metadata tagging. Neo4j needs `valid_from`/`valid_until` on edges. Zella needs MCP tools for temporal queries.
-- **Review synth-mcp transport architecture** — Currently using hand-rolled raw `http.createServer()` SSE (raw-transport.js). Should evaluate: (1) Streamable HTTP via SDK's `StreamableHTTPServerTransport`, (2) stdio shim to match all 5 other servers, (3) upstream MCP SDK fix. See walkthrough in session `e03cd5be`.
-- ~~**Investigate Cron SSH permissions**~~ — ✅ RESOLVED in session `4e3a9fc4`. Root cause was `enabled_toolsets` mismatch, not SSH.
-- **Review Hermes v0.15.2** — Zella discovered a newer version; check changelog for relevance.
 - **Default model reliability** — `nvidia/nemotron-3-super-120b-a12b` (Hermes default) is unreliable on OpenRouter (180s stream stalls). Cron jobs now pinned to `anthropic/claude-sonnet-4`. Consider changing the global default in `config.yaml`.
 
-**Session 05c2bb51 (Current — Strategic Brainstorm)**
+**Session 1a6a81be (Current — Ops Hardening & synth-mcp Fix)**
+1. **Telegram Session Audit:** Audited Zella's session `20260603_093019_f7461f40`. Found 5 error categories: Docker socket abuse (running `docker exec hermes-agent` on herself), wiki tool failures, browser-based workarounds, DeepSeek model errors, and Hermes Desktop app research tangents.
+2. **SOUL.md Execution Context:** Added `## Execution Context` section teaching Zella she runs inside the hermes-agent container. Correct/incorrect path examples, Docker socket restriction rules, key filesystem paths with editability flags.
+3. **Docker Image Pinning:** Pinned all 5 infrastructure images (hermes-agent, pgvector, neo4j, redis, postgres) to SHA256 digests across all 3 compose files.
+4. **Hermes Upgraded to v0.15.2:** Pulled latest image, updated compose digest, verified running with s6-overlay supervision.
+5. **synth-mcp Triple Bug Fix:** (a) Config entry was under `streaming:` instead of `mcp_servers:` — Hermes never loaded it. (b) URL pointed to `3080/mcp` instead of `3081/sse`. (c) `raw-transport.js` imported diagnostic `server-minimal.js` (only ping) instead of real `server.js` (all 8 tools). All fixed. Zella confirmed 8/8 tools operational.
+6. **Wiki.js Article Published:** Zella successfully used `wikijs_create_page` to publish Hermes Desktop App research at `homelab/hermes/desktop-app-research` (page ID: 5).
+7. **Terminal Backend Investigation:** Researched Hermes terminal backends for containerized deployments. Found 3 open P2 bugs on Docker backend. Decided to stay on `local` with SOUL.md restrictions. Filed observation that docs don't address containerized gateway deployments.
+8. **GitHub Issues Mined:** Found #38369 (execution target ambiguity), #38156 (host cwd leak), #37361 (per-session container auth), #36266 (gateway loop on removed container).
+
+
+**Session 05c2bb51 (Previous — Strategic Brainstorm)**
 1. **Three Brains vs Z-Brain Analysis:** Compared Chris Lema's "Your AI Has Three Brains" article (Feb 2026) against Z-Brain architecture. Key finding: Z-Brain already implements all three of Lema's composable layers — CORE is literally in the stack (Brain #3), Hermes/Zella is the always-on nervous system (Brain #2), IDE agents serve as the deep reader (Brain #1). MCP + status.md + cron jobs form the "spine" Lema says nobody has built yet.
 2. **Nate B. Jones Integration:** Mapped Jones's four disciplines (Prompt Craft, Context Engineering, Intent Engineering, Specification Engineering) to Z-Brain components. Jones's "Open Brain" concept directly inspired the architecture. SOUL.md = Prompt Craft, the entire memory stack = Context Engineering, config/preferences = Intent Engineering, MCP schemas + quarantine = Specification Engineering.
 3. **"Real Work" Gap Identified:** Infrastructure rated 9/10, utilization rated 3/10. System is mostly self-referential — monitoring itself, building itself. Defined three tiers of use cases to bridge the gap (daily briefings, content pipeline, autonomous research loops).
