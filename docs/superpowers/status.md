@@ -1,15 +1,15 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-05T23:35:00-04:00 (Session: 5198c89f)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED
+> Last updated: 2026-06-06T17:42:00-04:00 (Session: 50794e9b)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED
 
 ### Core Services
-- ✅ **CORE Memory Pipeline** — v0.7.14 (`764b5cea`), running. Upstream Ollama fix included.
+- ✅ **CORE Memory Pipeline** — v0.7.15, running. **Episode pipeline restored after 9-day outage.** Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
 - ✅ **Hermes Agent (Zella)** — v0.16.0 (pinned `sha256:246fd54b`), all platforms connected. s6-overlay supervised gateway. **Upgraded from v0.15.1 for Desktop compatibility.**
 - ✅ **Hermes Desktop** — Remote access via `zella.zb.example.com` (Traefik TLS). Native `_SESSION_TOKEN` auth. 3 Mac deployment (1/3 connected). Dashboard TUI mode enabled.
 - ✅ **synth-mcp** — FULLY OPERATIONAL. Fixed triple bug: (1) config entry was under `streaming:` instead of `mcp_servers:`, (2) URL pointed to wrong port (3080→3081), (3) raw-transport.js imported diagnostic minimal server instead of real server. All 8 tools verified working: `wikijs_create_page`, `wikijs_update_page`, `zulip_post_message`, `synthesizer_status`, `synthesizer_pause`, `synthesizer_resume`, `synthesizer_force_reprocess`, `synthesizer_backfill`.
-- ✅ **OpenBrain Server** — running at `core.zb.example.com`.
-- ✅ **Memory Ingest / Search** — MCP tools working.
+- ✅ **OpenBrain Server** — running at `core.zb.example.com`. **SDK migrated to @google/genai v1.0.**
+- ✅ **Memory Ingest / Search** — MCP tools working. **Neo4j: delete_entities + delete_relations tools added.**
 
 ### Z-Brain Ecosystem
 - ✅ **Traefik** — reverse proxy with Let's Encrypt wildcard cert for `*.zb.example.com` (Cloudflare DNS-01 challenge). Confirmed NOT interfering with Docker-internal traffic (verified via live curl from hermes-agent to synth-app:3081).
@@ -53,12 +53,15 @@ All images are now pinned to SHA256 digests to prevent unexpected upgrades:
 
 | Component | Provider | Model | Endpoint |
 |-----------|----------|-------|----------|
+| CORE Chat/Extraction | OpenAI SDK → OpenRouter | `openai/anthropic/claude-sonnet-4` | `https://openrouter.ai/api/v1` |
+| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (1024-dim) | `http://YOUR_OLLAMA_HOST:11434` |
 | Hermes Primary (config default) | OpenRouter | `nvidia/nemotron-3-super-120b-a12b` | `https://openrouter.ai/api/v1` |
 | Hermes Fallback 1 | OpenAI | `gpt-4o-mini` | `https://api.openai.com/v1` |
 | Hermes Fallback 2 | Ollama (local) | `gemma4:26b-mlx` | `http://YOUR_OLLAMA_HOST:11434/v1` |
 | Cron Jobs (pinned) | OpenRouter | `anthropic/claude-sonnet-4` | `https://openrouter.ai/api/v1` |
 | OpenBrain Server (Chat) | OpenRouter | `openai/gpt-4o-mini` | `https://openrouter.ai/api/v1` |
 | OpenBrain Server (Embed) | OpenRouter | `google/gemini-embedding-2-preview` | `https://openrouter.ai/api/v1` |
+| OpenBrain (Embed Fallback) | Google AI Studio | `gemini-embedding-2` | `https://generativelanguage.googleapis.com` |
 | OpenBrain (Fallback) | Ollama (local) | `gemma4:26b-mlx` | `http://YOUR_OLLAMA_HOST:11434/api/chat` |
 | Synthesizer LLM | Hermes Agent | via `hermes-agent:8642` | Internal Docker network |
 
@@ -73,21 +76,16 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 ## Session Work Completed
 
-**Session 5198c89f (Current — Z-Brain Chronicle Launch)**
-1. **Z-Brain Chronicle Documentation System Launched:** Designed, structured, and populated a comprehensive documentation system at `docs/the_story/` with 23 files across 3 layers (narrative chapters, technical reference, perspectives) plus appendices.
-2. **6 Chapters Fully Drafted:** Preface (what/why), The Vision (AI amnesia problem, Jones/Lema influences), The Amnesia Incident (blown API credits, 24-hour migration), Teaching Zella Where She Lives (Docker socket abuse, SOUL.md execution context), The Gateway Boot Paradox (enabled_toolsets, first-person bug reports), Cross-Model Critique (using different models to review each other).
-3. **7 Chapter Stubs Created:** Foundation, Building the Nervous System, Giving Zella a Body, The Ecosystem, Three Brains, Building in Public, Hermes Desktop — each with detailed notes and source references for future expansion.
-4. **Zella's Inaugural Interview Conducted:** First-person AI agent perspective captured via z-relay API. Model: `deepseek/deepseek-v4-pro` via OpenRouter. Zella's response on the `enabled_toolsets` gap ("what it's like to be any kind of mind") is arguably the most philosophically interesting observation in the project.
-5. **Architecture Overview with 5 Mermaid Diagrams:** System architecture, container topology, memory pipeline data flow, provider routing, cross-model critique workflow.
-6. **SOUL.md Technical Reference Written:** Hot-reloadable personality file, execution context, philosophical implications.
-7. **Agentic Collaboration Model Documented:** The Meta-Product Owner workflow — voice-to-agent, multi-agent orchestration, hidden costs and rewards, advice for builders.
-8. **Story-Capture Skill Created:** `~/.gemini/config/skills/story-capture/SKILL.md` — fragment capture during sessions, event-triggered interviews, teardown updates. Integrates with z-cortex-session-sync.
-9. **Model Provenance Rules Established:** All Chronicle content must note IDE agent model AND Zella's model/provider at time of interview. Codified in design spec and skill.
-10. **Story Fragment Captured:** the operator's unprompted backstory on IDE tooling choices — curiosity-driven Antigravity adoption, credit pressure upgrade, multi-model access as killer feature, future plans for Codex/Claude Code/Claude Co-Work.
-11. **Full Appendix Suite:** Timeline (reconstructed from all session logs), session index, glossary (30+ terms), external references (12 sources), interview archive.
+**Session 50794e9b (Current — Episodic Recency Gap Fix)**
+1. **Episodic Pipeline Restored (9-day outage):** CORE's `ingest-episode` BullMQ worker had been dead since May 28 (upstream CORE v0.7.15 rebuilt, wiping source patches). Fixed via pure configuration: `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL=openrouter` + `OPENAI_API_MODE=chat_completions`. Critical discovery: `MODEL` must use `openai/` prefix (`openai/anthropic/claude-sonnet-4`) to force `getProvider()` through the OpenAI proxy path — without it, `anthropic/*` routes to `api.anthropic.com` directly.
+2. **5 Real Episodes Recovered:** Re-ingested failed episodes from June 1-4 (Chris Lema Three-Brain, MemPalace evaluation, artifact pipeline design, CrowdSec deployment Q&A, personal conversation).
+3. **OpenBrain SDK Migration:** `@google/generative-ai` → `@google/genai` v1.0. Fixed embedding and chat APIs.
+4. **Neo4j Cleanup & MCP Tools:** Cleaned 13 stale/duplicate entities. Added `delete_entities` and `delete_relations` tools to neo4j-memory MCP.
+5. **CORE Version Tracking Established:** Created `docs/maintenance/core-version-tracking.md` with pre-upgrade checklist, post-upgrade verification, and known upstream behaviors. Protects against future CORE rebuilds breaking the pipeline.
+6. **Database Cleanup:** Disabled GPT-5.x, direct Anthropic, and Azure models from `LLMModel` table (no API keys for those providers).
 
 **🔴 NEXT SESSION PRIORITY — READ FIRST**
-- **🚨 FIX: OpenBrain MCP `capture` embedding failure** — `gemini-embedding-2` returning `400 Bad Request` on all new captures via MCP. Error: `EmbedContentRequest.content.parts[0].data: required oneof field 'data' must have one initialized field`. Search still works (existing embeddings fine). `ingest-docs.js` uses a different path and works. Only MCP `capture` tool is broken — meaning Zella and IDE agents cannot save new memories through the normal MCP pathway. Investigate OpenBrain server's embedding client request format vs. current Google API spec. Same class of issue as the Amnesia Incident.
+- **⚠️ CORE UPGRADE WATCH:** CORE upstream may release new versions that rebuild the container. Configuration is now upgrade-safe (no source patches), BUT the seed process may re-enable disabled models. After any CORE upgrade: (1) check `LLMModel` table for re-enabled GPT models, (2) verify `MODEL=openai/anthropic/claude-sonnet-4` is routing correctly, (3) test episode ingest. See `docs/maintenance/core-version-tracking.md`.
 - **Transition Z-Brain from experimentation to real work** — Infrastructure is 9/10 but utilization is 3/10. Pick a Tier 1 use case (daily briefing, research assistant, or project status tracking) and make it work end-to-end. See brainstorm artifact in session `05c2bb51`.
 - **Z-Brain Chronicle: Expand stub chapters** — 7 chapters have stubs with notes. Priority: Ch. 2 (Foundation) and Ch. 5 (Giving Zella a Body) need the operator interviews for content that isn't in any log file.
 - **Public repo sync review** — The Chronicle content will be synced via `sync-to-public.sh`. May need to review scrubbing rules for narrative prose (personal name "the operator" → "the operator" etc.). Run `--dry-run` before pushing.
@@ -223,3 +221,4 @@ Built and deployed the complete Zella CLI Proxy system:
 ## ⛔ Critical Rules
 
 - **NEVER modify files inside the Hermes container image as permanent fixes.** Files under `/opt/hermes/` (including `tools/mcp_tool.py`, `gateway/`, `plugins/`, etc.) get wiped on every upstream `nousresearch/hermes-agent` image update. Only modify: `config.yaml` (`/opt/data/config.yaml`, persisted via volume mount), files in mounted volumes (`./mcp:/opt/mcp`, `./data:/opt/data`), and our own code in `synth-stack/`, `hermes-stack/` compose files. Temporary `docker exec` patches for debugging are OK but must **always** be removed before session ends.
+- **CORE model routing: `MODEL` MUST use `openai/` prefix** (e.g., `openai/anthropic/claude-sonnet-4`). CORE's `getProvider()` splits on the first `/` — without the `openai/` prefix, `anthropic/*` models route to `api.anthropic.com` directly instead of through the OpenRouter proxy. After any CORE upgrade, verify: (1) `MODEL` env var still has `openai/` prefix, (2) `LLMModel` table doesn't have re-enabled GPT/Anthropic models overriding the env var, (3) test episode ingest succeeds. See `docs/maintenance/core-version-tracking.md`.

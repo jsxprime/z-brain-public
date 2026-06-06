@@ -169,6 +169,20 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 
 ---
 
+## Phase 8: Resilience & Recovery (Current)
+
+### Session 50794e9b — Episodic Recency Gap Fix
+- **💥 9-day pipeline outage discovered.** CORE episode ingestion had been dead since May 28. Root cause: upstream CORE rebuild (v0.7.14 → v0.7.15) wiped the source patches from the May 27 migration. The `CHAT_PROVIDER=openrouter` configuration relied on custom code that no longer existed.
+- **Key discovery: CORE's built-in OpenAI proxy path.** Read the compiled `server-build-3i94IH5G.js` source and found that CORE natively supports routing through any OpenAI-compatible endpoint via `OPENAI_BASE_URL` + `OPENAI_API_MODE=chat_completions`. No source patches needed — the capability was always there.
+- **Critical routing fix: `MODEL=openai/anthropic/claude-sonnet-4`.** CORE's `getProvider()` splits on the first `/` to determine provider routing. Without the `openai/` prefix, `anthropic/claude-sonnet-4` routes to `api.anthropic.com` directly (with no API key → `invalid x-api-key`). The `openai/` prefix forces the OpenAI proxy path.
+- **5 real episodes recovered** from the June 1-4 failure period (Chris Lema Three-Brain analysis, MemPalace evaluation, artifact pipeline design, CrowdSec Q&A, personal conversation).
+- **Database cleanup:** Disabled GPT-5.x, direct Anthropic, and Azure models from the `LLMModel` table (no keys for those providers on this deployment).
+- **BullMQ/Postgres disconnect discovered:** Updating `IngestionQueue.status` in Postgres does NOT create Redis jobs. BullMQ tracks job state in Redis independently. Must restart CORE or re-submit via API.
+- **OpenBrain SDK migrated:** `@google/generative-ai` → `@google/genai` (SDK 1.0).
+- **Neo4j cleanup:** 13 stale/duplicate entities cleaned. `delete_entities` and `delete_relations` tools added to neo4j-memory MCP.
+- **CORE version tracking established:** `docs/maintenance/core-version-tracking.md` — pre-upgrade checklist and post-upgrade verification for future CORE updates.
+- **Documented:** `docs/maintenance/2026-06-06_episodic-recency-gap-fix.md`
+
 ## Container Inventory (as of 2026-06-05)
 
 22 containers across 8 stacks on VM YOUR_VM_IP:
@@ -184,10 +198,12 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 | dashboard | zbrain-dashboard |
 | other | portainer, dockge, zella-speedtest |
 
-## Provider Configuration (as of 2026-06-05)
+## Provider Configuration (as of 2026-06-06)
 
 | Component | Provider | Model |
 |---|---|---|
+| CORE Chat/Extraction | OpenAI SDK → OpenRouter | `openai/anthropic/claude-sonnet-4` |
+| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (1024-dim) |
 | Hermes Primary | OpenRouter | `nvidia/nemotron-3-super-120b-a12b` |
 | Hermes Fallback 1 | OpenAI | `gpt-4o-mini` |
 | Hermes Fallback 2 | Ollama (local) | `gemma4:26b-mlx` |
