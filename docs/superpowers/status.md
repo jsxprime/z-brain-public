@@ -1,11 +1,12 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-03T22:47:00-04:00 (Session: 1a6a81be)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | synth-mcp ✅ FULLY OPERATIONAL
+> Last updated: 2026-06-05T23:35:00-04:00 (Session: 5198c89f)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED
 
 ### Core Services
 - ✅ **CORE Memory Pipeline** — v0.7.14 (`764b5cea`), running. Upstream Ollama fix included.
-- ✅ **Hermes Agent (Zella)** — v0.15.2 (pinned `sha256:52d353b4`), **6/6 MCP servers connected**, all platforms connected. s6-overlay supervised gateway.
+- ✅ **Hermes Agent (Zella)** — v0.16.0 (pinned `sha256:246fd54b`), all platforms connected. s6-overlay supervised gateway. **Upgraded from v0.15.1 for Desktop compatibility.**
+- ✅ **Hermes Desktop** — Remote access via `zella.zb.example.com` (Traefik TLS). Native `_SESSION_TOKEN` auth. 3 Mac deployment (1/3 connected). Dashboard TUI mode enabled.
 - ✅ **synth-mcp** — FULLY OPERATIONAL. Fixed triple bug: (1) config entry was under `streaming:` instead of `mcp_servers:`, (2) URL pointed to wrong port (3080→3081), (3) raw-transport.js imported diagnostic minimal server instead of real server. All 8 tools verified working: `wikijs_create_page`, `wikijs_update_page`, `zulip_post_message`, `synthesizer_status`, `synthesizer_pause`, `synthesizer_resume`, `synthesizer_force_reprocess`, `synthesizer_backfill`.
 - ✅ **OpenBrain Server** — running at `core.zb.example.com`.
 - ✅ **Memory Ingest / Search** — MCP tools working.
@@ -71,6 +72,50 @@ Wiki.js edit  → Poller  → events table ↗        (the only AI step)
 Everything from event capture to memory storage runs autonomously 24/7. The only AI model call is the extraction step. If the LLM API goes down, events queue and retry automatically.
 
 ## Session Work Completed
+
+**Session 5198c89f (Current — Z-Brain Chronicle Launch)**
+1. **Z-Brain Chronicle Documentation System Launched:** Designed, structured, and populated a comprehensive documentation system at `docs/the_story/` with 23 files across 3 layers (narrative chapters, technical reference, perspectives) plus appendices.
+2. **6 Chapters Fully Drafted:** Preface (what/why), The Vision (AI amnesia problem, Jones/Lema influences), The Amnesia Incident (blown API credits, 24-hour migration), Teaching Zella Where She Lives (Docker socket abuse, SOUL.md execution context), The Gateway Boot Paradox (enabled_toolsets, first-person bug reports), Cross-Model Critique (using different models to review each other).
+3. **7 Chapter Stubs Created:** Foundation, Building the Nervous System, Giving Zella a Body, The Ecosystem, Three Brains, Building in Public, Hermes Desktop — each with detailed notes and source references for future expansion.
+4. **Zella's Inaugural Interview Conducted:** First-person AI agent perspective captured via z-relay API. Model: `deepseek/deepseek-v4-pro` via OpenRouter. Zella's response on the `enabled_toolsets` gap ("what it's like to be any kind of mind") is arguably the most philosophically interesting observation in the project.
+5. **Architecture Overview with 5 Mermaid Diagrams:** System architecture, container topology, memory pipeline data flow, provider routing, cross-model critique workflow.
+6. **SOUL.md Technical Reference Written:** Hot-reloadable personality file, execution context, philosophical implications.
+7. **Agentic Collaboration Model Documented:** The Meta-Product Owner workflow — voice-to-agent, multi-agent orchestration, hidden costs and rewards, advice for builders.
+8. **Story-Capture Skill Created:** `~/.gemini/config/skills/story-capture/SKILL.md` — fragment capture during sessions, event-triggered interviews, teardown updates. Integrates with z-cortex-session-sync.
+9. **Model Provenance Rules Established:** All Chronicle content must note IDE agent model AND Zella's model/provider at time of interview. Codified in design spec and skill.
+10. **Story Fragment Captured:** the operator's unprompted backstory on IDE tooling choices — curiosity-driven Antigravity adoption, credit pressure upgrade, multi-model access as killer feature, future plans for Codex/Claude Code/Claude Co-Work.
+11. **Full Appendix Suite:** Timeline (reconstructed from all session logs), session index, glossary (30+ terms), external references (12 sources), interview archive.
+
+**🔴 NEXT SESSION PRIORITY — READ FIRST**
+- **Transition Z-Brain from experimentation to real work** — Infrastructure is 9/10 but utilization is 3/10. Pick a Tier 1 use case (daily briefing, research assistant, or project status tracking) and make it work end-to-end. See brainstorm artifact in session `05c2bb51`.
+- **Z-Brain Chronicle: Expand stub chapters** — 7 chapters have stubs with notes. Priority: Ch. 2 (Foundation) and Ch. 5 (Giving Zella a Body) need the operator interviews for content that isn't in any log file.
+- **Public repo sync review** — The Chronicle content will be synced via `sync-to-public.sh`. May need to review scrubbing rules for narrative prose (personal name "the operator" → "the operator" etc.). Run `--dry-run` before pushing.
+- **DeepInfra model routing** — the operator requested: make DeepInfra the provider when Nemotron Super 3 is chosen through OpenRouter. NOT STARTED.
+- **Default model reliability** — `nvidia/nemotron-3-super-120b-a12b` (Hermes default) is unreliable on OpenRouter (180s stream stalls). Cron jobs now pinned to `anthropic/claude-sonnet-4`. Consider changing the global default in `config.yaml`.
+
+**Session 7f2001ab (Previous — Cron MCP Toolset Fix)**
+1. **Root-Cause Investigation:** Investigated why the KG Auto-Update cron job (`e4dbe4fd`) couldn't write 7 abstract entities to Neo4j. Two-pronged approach: read Hermes source code (`scheduler.py`, `model_tools.py`, `toolsets.py`, `registry.py`, `mcp_tool.py`) AND asked Zella for her first-person account. Both confirmed the same root cause from different perspectives.
+2. **Root Cause Identified:** `discover_mcp_tools()` IS called in cron (added in Hermes issue #4219), so all 63 MCP tools are registered. But the job's `enabled_toolsets: [terminal, session_search]` acts as a strict whitelist filter — MCP tools (registered under `mcp-{name}` toolsets) are discovered but filtered out before the agent sees them. Zella's report of "MCP unavailable" was experientially accurate but mechanistically imprecise.
+3. **KG Auto-Update Fixed:** Added `neo4j_memory`, `openbrain`, `telegram_push` to the job's `enabled_toolsets`. Verified via Python simulation inside the container: all 5 toolsets resolve, 14 tools loaded. **Confirmed working on first cron run** — all 7 pending entities (MemPalace, Mount Vernon NY, Kettering MD, America/New_York timezone, MemPalace Rejection, Temporal Validity Windows, Daily Weather Report) successfully written to Neo4j.
+4. **Health Check Fixed:** Same `enabled_toolsets` fix applied to the Memory Systems Health Check cron (`5c3aa98`), plus `z-brain` (CORE Memory OS) toolset. Resolves the "⚠️ Z-Brain Episodes: Tool Unavailable" warning in health reports.
+5. **Investigation Artifact:** Created detailed investigation report comparing source code findings with Zella's first-person account. Source code won on mechanism (whitelist filter), Zella won on symptom identification.
+6. **Local Workspace Synced:** `jobs.json` synced from VM to local git-tracked copy.
+
+**🔴 NEXT SESSION PRIORITY — READ FIRST**
+- **Transition Z-Brain from experimentation to real work** — Infrastructure is 9/10 but utilization is 3/10. Pick a Tier 1 use case (daily briefing, research assistant, or project status tracking) and make it work end-to-end. See brainstorm artifact in session `05c2bb51`.
+- **DeepInfra model routing** — the operator requested: make DeepInfra the provider when Nemotron Super 3 is chosen through OpenRouter. NOT STARTED.
+- **Temporal reasoning improvements** — Extraction prompts need temporal metadata tagging. Neo4j needs `valid_from`/`valid_until` on edges. Zella needs MCP tools for temporal queries.
+- **Default model reliability** — `nvidia/nemotron-3-super-120b-a12b` (Hermes default) is unreliable on OpenRouter (180s stream stalls). Cron jobs now pinned to `deepseek/deepseek-v4-pro`. Consider changing the global default in `config.yaml`.
+
+**Session cc5ffd84 (Previous — Public Repository Creation & Sync Workflow)**
+2. **Repository Sanitized:** Replaced all hardcoded VM IPs (`YOUR_VM_IP` → `YOUR_VM_IP`) and usernames (`YOUR_VM_USER` → `YOUR_VM_USER`) across 33 files. Hardened `.gitignore` with comprehensive exclusions. Removed agent/IDE metadata from tracking (`.agent/`, `.claude/`).
+3. **Git History Scrubbed (4 passes):** Used `git-filter-repo` to rewrite all commits. Pass 1: API keys, IPs, usernames. Pass 2: emails (`user@example.com`, `jay@example.com`, etc.) and git author metadata. Pass 3: domain `example.com` (all subdomains). Pass 4: Ollama IP (`YOUR_OLLAMA_HOST`), personal name (`the operator` → `the operator`), private repo refs (`jsxprime/z-brain-public` → `jsxprime/z-brain-public`).
+4. **Comprehensive README:** Created full project README on the public repo with architecture diagram, component descriptions, container inventory, tech stack, getting started guide, and design decisions.
+5. **Public Repo Published:** Created `jsxprime/z-brain-public` on GitHub. Pushed fully scrubbed history. GitHub Push Protection scan passed.
+6. **Automated Sync Script:** Created `scripts/public-sync/sync-to-public.sh` — one-command workflow to re-sync public repo from private. Includes `--dry-run` mode, automatic verification, and gitignored config files for secrets. Tested end-to-end.
+7. **Knowledge Item Created:** `z_brain_public_repo_sync` KI so future agent sessions know how to run the sync.
+8. **Local Repo Preserved:** Reverted sanitization commit on local working copy so all code continues to work with original hardcoded defaults. Private `jsxprime/z-brain-public` repo untouched.
+9. **⚠️ REMINDER:** Rotate 6 local secrets (Hermes API key, Telegram bot token, Gemini key, OpenRouter key, host-ops secret, GitHub PAT in hermes-stack/data/config.yaml).
 
 **🔴 NEXT SESSION PRIORITY — READ FIRST**
 - **Transition Z-Brain from experimentation to real work** — Infrastructure is 9/10 but utilization is 3/10. Pick a Tier 1 use case (daily briefing, research assistant, or project status tracking) and make it work end-to-end. See brainstorm artifact in session `05c2bb51`.
