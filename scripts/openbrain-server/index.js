@@ -5,7 +5,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import pg from "pg";
 import dotenv from "dotenv";
 import path from "path";
@@ -35,7 +35,7 @@ if (!DATABASE_URL) {
 console.error(`[config] Embedding providers: ${OPENROUTER_API_KEY ? 'openrouter (primary)' : ''}${OPENROUTER_API_KEY && GEMINI_API_KEY ? ' → ' : ''}${GEMINI_API_KEY ? 'gemini-sdk (fallback)' : ''}`);
 
 // Initialize clients
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const genAI = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 const pool = new pg.Pool({
   connectionString: DATABASE_URL,
 });
@@ -121,15 +121,15 @@ async function getEmbeddingViaOpenRouter(text) {
 }
 
 async function getEmbeddingViaGeminiSDK(text) {
-  const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-  const result = await model.embedContent({
-    content: { parts: [{ text }] },
-    outputDimensionality: 768,
+  const result = await genAI.models.embedContent({
+    model: "gemini-embedding-2",
+    contents: text,
+    config: { outputDimensionality: 768 },
   });
-  if (!result.embedding || !result.embedding.values) {
+  if (!result.embeddings || !result.embeddings[0] || !result.embeddings[0].values) {
     throw new Error("No embedding values returned from Gemini SDK");
   }
-  return result.embedding.values;
+  return result.embeddings[0].values;
 }
 
 async function getEmbedding(text) {
@@ -206,10 +206,13 @@ async function chatCompletion(prompt, { json = false } = {}) {
   // Fallback to Gemini SDK
   if (genAI) {
     const config = json ? { responseMimeType: "application/json" } : {};
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: config });
-    const result = await model.generateContent(prompt);
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config,
+    });
     console.error("[chat] provider: gemini-sdk (fallback) ✓");
-    return result.response.text();
+    return result.text;
   }
 
   throw new Error("No chat provider available");

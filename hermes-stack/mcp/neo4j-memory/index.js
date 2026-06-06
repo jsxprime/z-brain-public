@@ -84,6 +84,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ['query']
         }
+      },
+      {
+        name: 'delete_entities',
+        description: 'Delete one or more entities from the memory graph by name. Also removes all relationships connected to deleted entities. Use with caution — this is irreversible.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            entityNames: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of entity names to delete'
+            }
+          },
+          required: ['entityNames']
+        }
+      },
+      {
+        name: 'delete_relations',
+        description: 'Delete specific relations between entities.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            relations: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  from: { type: 'string', description: 'Source entity name' },
+                  to: { type: 'string', description: 'Target entity name' },
+                  relationType: { type: 'string', description: 'Optional: specific relation type to delete. If omitted, all relations between from and to are deleted.' }
+                },
+                required: ['from', 'to']
+              }
+            }
+          },
+          required: ['relations']
+        }
       }
     ],
   };
@@ -150,6 +187,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       return {
         content: [{ type: 'text', text: JSON.stringify(entities, null, 2) }],
+      };
+    }
+
+    if (name === 'delete_entities') {
+      const entityNames = args.entityNames;
+      let deleted = 0;
+      for (const entityName of entityNames) {
+        const result = await session.run(
+          `MATCH (e:Entity {name: $name}) DETACH DELETE e RETURN count(e) AS cnt`,
+          { name: entityName }
+        );
+        deleted += result.records[0].get('cnt').toNumber();
+      }
+      return {
+        content: [{ type: 'text', text: `Successfully deleted ${deleted} entities (and their relationships).` }],
+      };
+    }
+
+    if (name === 'delete_relations') {
+      const relations = args.relations;
+      let deleted = 0;
+      for (const rel of relations) {
+        let query, params;
+        if (rel.relationType) {
+          query = `MATCH (a:Entity {name: $from})-[r:RELATED_TO {type: $relationType}]->(b:Entity {name: $to}) DELETE r RETURN count(r) AS cnt`;
+          params = { from: rel.from, to: rel.to, relationType: rel.relationType };
+        } else {
+          query = `MATCH (a:Entity {name: $from})-[r]->(b:Entity {name: $to}) DELETE r RETURN count(r) AS cnt`;
+          params = { from: rel.from, to: rel.to };
+        }
+        const result = await session.run(query, params);
+        deleted += result.records[0].get('cnt').toNumber();
+      }
+      return {
+        content: [{ type: 'text', text: `Successfully deleted ${deleted} relations.` }],
       };
     }
 
