@@ -1,11 +1,12 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-06T17:42:00-04:00 (Session: 50794e9b)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED
+> Last updated: 2026-06-06T18:30:00-04:00 (Session: fcbc5c78)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED
 
 ### Core Services
 - ✅ **CORE Memory Pipeline** — v0.7.15, running. **Episode pipeline restored after 9-day outage.** Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
 - ✅ **Hermes Agent (Zella)** — v0.16.0 (pinned `sha256:246fd54b`), all platforms connected. s6-overlay supervised gateway. **Upgraded from v0.15.1 for Desktop compatibility.**
+- ✅ **Hermes Native MCP** — Built-in `mcp_serve.py` exposed on port 8643 via SSE/HTTP. 10 tools (conversations, messages, events, permissions). Registered as `hermes-native` in Antigravity IDE MCP config. Runs alongside z-relay (additive, not replacement).
 - ✅ **Hermes Desktop** — Remote access via `zella.zb.example.com` (Traefik TLS). Native `_SESSION_TOKEN` auth. 3 Mac deployment (1/3 connected). Dashboard TUI mode enabled.
 - ✅ **synth-mcp** — FULLY OPERATIONAL. Fixed triple bug: (1) config entry was under `streaming:` instead of `mcp_servers:`, (2) URL pointed to wrong port (3080→3081), (3) raw-transport.js imported diagnostic minimal server instead of real server. All 8 tools verified working: `wikijs_create_page`, `wikijs_update_page`, `zulip_post_message`, `synthesizer_status`, `synthesizer_pause`, `synthesizer_resume`, `synthesizer_force_reprocess`, `synthesizer_backfill`.
 - ✅ **OpenBrain Server** — running at `core.zb.example.com`. **SDK migrated to @google/genai v1.0.**
@@ -76,7 +77,16 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 ## Session Work Completed
 
-**Session 50794e9b (Current — Episodic Recency Gap Fix)**
+**Session fcbc5c78 (Current — Hermes Native MCP Deployment)**
+1. **Hermes Communication Audit:** Audited how Antigravity IDE communicates with Zella. Discovered Hermes ships with `mcp_serve.py` — a built-in MCP server with 10 tools designed for external agent control. Our custom `z-relay` (5 tools) was bypassing this native capability.
+2. **Native MCP Server Deployed:** Created `hermes_mcp_http.py` launcher (in bind-mounted `mcp/` dir) that starts `mcp_serve.py` on `0.0.0.0:8643` with SSE transport. Created `start_with_mcp.sh` wrapper that starts MCP server in background before the gateway process.
+3. **Docker Compose Updated:** Added port `8643:8643` and entrypoint wrapper to `docker-compose.yml`. Container redeployed with zero-downtime for existing services. Backup at `docker-compose.yml.bak`.
+4. **End-to-End Verification:** Full MCP handshake from Mac → VM → Docker confirmed working. `conversations_list` returned live Telegram session data. All 10 native tools operational: `conversations_list`, `conversation_get`, `messages_read`, `messages_send`, `attachments_fetch`, `events_poll`, `events_wait`, `channels_list`, `permissions_list_open`, `permissions_respond`.
+5. **Antigravity MCP Config Updated:** Registered `hermes-native` in `mcp_config.json` using `mcp-remote` + SSE (same pattern as `openbrain`). z-relay preserved — both servers coexist.
+6. **Comparison Chart Created:** Documented z-relay (5 tools, HTTP+SSH) vs hermes-native (10 tools, in-process) with capability matrix, scorecard, and architecture diagram.
+7. **Story Assets Added:** 3 hero images (the operator & Zella connecting) saved to `docs/the_story/assets/images/` for Chronicle use.
+
+**Session 50794e9b (Previous — Episodic Recency Gap Fix)**
 1. **Episodic Pipeline Restored (9-day outage):** CORE's `ingest-episode` BullMQ worker had been dead since May 28 (upstream CORE v0.7.15 rebuilt, wiping source patches). Fixed via pure configuration: `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL=openrouter` + `OPENAI_API_MODE=chat_completions`. Critical discovery: `MODEL` must use `openai/` prefix (`openai/anthropic/claude-sonnet-4`) to force `getProvider()` through the OpenAI proxy path — without it, `anthropic/*` routes to `api.anthropic.com` directly.
 2. **5 Real Episodes Recovered:** Re-ingested failed episodes from June 1-4 (Chris Lema Three-Brain, MemPalace evaluation, artifact pipeline design, CrowdSec deployment Q&A, personal conversation).
 3. **OpenBrain SDK Migration:** `@google/generative-ai` → `@google/genai` v1.0. Fixed embedding and chat APIs.
