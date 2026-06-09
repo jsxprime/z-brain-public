@@ -1,8 +1,8 @@
 FROM node:20-alpine AS base
 RUN npm install -g pnpm
 
-# Install native compilation dependencies for SQLite/node modules, plus OpenSSL for Prisma
-RUN apk add --no-cache python3 make g++ git openssl libc6-compat
+# Install native compilation dependencies for SQLite/node modules, plus OpenSSL for Prisma and tzdata for timezone support
+RUN apk add --no-cache python3 make g++ git openssl libc6-compat tzdata
 
 WORKDIR /app
 

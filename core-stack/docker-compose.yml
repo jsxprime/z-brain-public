@@ -11,6 +11,7 @@ services:
     ports:
       - "3033:3033"
     environment:
+      - TZ=America/New_York
       - REMIX_APP_PORT=3033
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       - DIRECT_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
@@ -46,6 +47,9 @@ services:
       - postgres
       - redis
       - neo4j
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - agent-net
     labels:

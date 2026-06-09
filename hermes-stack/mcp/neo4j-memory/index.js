@@ -158,7 +158,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         await session.run(
           `MATCH (a:Entity {name: $from})
            MATCH (b:Entity {name: $to})
-           MERGE (a)-[r:RELATED_TO {type: $relationType}]->(b)`,
+           MERGE (a)-[r:RELATED_TO]->(b)
+           SET r.type = $relationType`,
           { from: rel.from, to: rel.to, relationType: rel.relationType }
         );
         added++;

@@ -78,12 +78,13 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 ## Session Work Completed
 
-**Session 8c02e948 (Current — Hermes s6-Overlay Restore & Memory Pipeline Repair)**
+**Session CURRENT (Ops Fixes & Timezone Shift)**
+1. **System Timezone Shifted:** Migrated Z-Brain ecosystem from UTC to America/New_York (EDT). Changed host VM via `timedatectl`, added `TZ=America/New_York` to all compose files, and injected `tzdata` package into `core-app` Alpine build. All containers verified running on EDT.
+2. **Neo4j Duplicate Relation Bug Fixed:** Root-caused and resolved the relation regeneration loop. The MCP plugin was incorrectly enforcing strict property matching (`MERGE (a)-[r:RELATED_TO {type: $relationType}]->(b)`). Rewrote upsert logic to merge solely on relation geometry and then `SET r.type`, guaranteeing idempotency and exactly one relation per directional pair.
+3. **Episodic Ingestion Verified:** Investigated suspected stall in episodic pipeline. BullMQ worker (`core-app`) verified completely healthy and responsive. Pipeline was merely idle due to zero substantive Telegram conversations with Zella since June 6.
+
+**Session 8c02e948 (Previous — Hermes s6-Overlay Restore & Memory Pipeline Repair)**
 1. **Hermes s6-Overlay Restored:** Custom `entrypoint:` override in docker-compose.yml was bypassing the official `/init` bootstrap. Hermes ran as UID 10000, skills were root-owned, Docker socket group wasn't set, MCP bridge ran unsupervised. Fix: removed entrypoint, added `HERMES_UID=1001`/`HERMES_GID=1001`, created MCP bridge as proper s6 longrun service, fixed file ownership.
-2. **Cross-Model Plan Review:** GPT-5.5 (via Codex CLI) reviewed deployment plan before execution. Identified 3 improvements incorporated into final plan.
-3. **Memory Search Restored:** Diagnosed semantic search failure (degraded since May 27). Root cause chain: Ollama on Mac unreachable → CORE embedding failures → 712/1567 thoughts missing embeddings → `.slice()` crash on null vectors. Fixed by backfilling all 712 embeddings (Matryoshka truncation 1024→768, L2 renormalized).
-4. **Ingestion Queue Cleared:** Reset 53 failed Postgres rows, re-queued 11 BullMQ failed jobs (all re-processed), cleaned 37 orphaned PENDING rows.
-5. **Config Sync:** Fixed `EMBEDDING_MODEL_SIZE` from 1024→768 (matches `vector(768)` column). Added `GEMINI_API_KEY=not_needed` to silence Docker Compose warning. Repo and VM `.env` files synced.
 
 **Session fcbc5c78 (Previous — Hermes Native MCP Deployment)**
 1. **Hermes Communication Audit:** Audited how Antigravity IDE communicates with Zella. Discovered Hermes ships with `mcp_serve.py` — a built-in MCP server with 10 tools designed for external agent control. Our custom `z-relay` (5 tools) was bypassing this native capability.

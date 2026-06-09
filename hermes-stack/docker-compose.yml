@@ -2,20 +2,25 @@
 
 services:
   hermes-agent:
-    image: nousresearch/hermes-agent@sha256:52d353b47aaae912a3018f80f4ee72ff49f940a0ff5613e4983d18328bbccc8a  # v0.15.2
+    image: nousresearch/hermes-agent@sha256:246fd54bba9eb61afde030f9d92adc7c847dc71d5e624312e1c52b332927ef34  # v0.16.0
     container_name: hermes-agent
     restart: unless-stopped
     command: gateway run
     ports:
       - "8642:8642"
-      - "9119:9119"
+      - "8643:8643"   # Hermes MCP HTTP/SSE bridge
     environment:
+      - TZ=America/New_York
+      - HERMES_UID=1001
+      - HERMES_GID=1001
       - HERMES_HOME=/opt/data
       - API_SERVER_ENABLED=true
       - API_SERVER_HOST=0.0.0.0
       - API_SERVER_KEY=${API_SERVER_KEY}
       - HERMES_DASHBOARD=1
       - HERMES_DASHBOARD_INSECURE=1
+      - HERMES_DASHBOARD_TUI=1
+      - HERMES_DASHBOARD_SESSION_TOKEN=${HERMES_DASHBOARD_SESSION_TOKEN}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
     volumes:
       - ./data:/opt/data
@@ -24,6 +29,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - agent-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zella-dash.rule=Host(`zella.zb.example.com`)"
+      - "traefik.http.routers.zella-dash.entrypoints=websecure"
+      - "traefik.http.routers.zella-dash.tls=true"
+      - "traefik.http.routers.zella-dash.tls.certresolver=cloudflare"
+      - "traefik.http.services.zella-dash.loadbalancer.server.port=9119"
+      - "traefik.docker.network=agent-net"
 
 networks:
   agent-net:
