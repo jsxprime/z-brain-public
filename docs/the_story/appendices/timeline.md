@@ -193,6 +193,12 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 - **Key discovery: vector dimension mismatch.** Column is `vector(768)` but `.env` said `EMBEDDING_MODEL_SIZE=1024`. CORE handles Matryoshka truncation internally. `.env` corrected to 768.
 - **Config sync:** Repo and VM `.env` files synced. `GEMINI_API_KEY=not_needed` added to silence Docker Compose warning.
 
+### Session 73e58237 — Operations Hardening & Timezone Shift
+- **Timezone shift to EDT:** Migrated Z-Brain ecosystem from UTC to `America/New_York`. Configured host VM via `timedatectl`, injected `TZ` into compose files, and added `tzdata` to `core-app` Alpine base.
+- **Neo4j duplicate relation bug fixed:** Decoupled relation property creation from the `MERGE` clause in the Neo4j MCP plugin to guarantee idempotency and prevent duplicate accumulation on entity updates.
+- **Episodic ingestion investigated:** Flagged by SITREP. Verified `core-app` BullMQ worker was healthy and empty; ingestion was idle organically due to no new Telegram interactions, not stalled.
+- **Configuration drift incident:** Accidental overwrite of live `docker-compose.yml` with outdated local version crashed Hermes (lost `HERMES_UID=1001` leading to `[Errno 13] Permission denied`). Reconstructed live compose file, restored UID, and learned critical lesson about VM/local sync boundaries.
+
 ## Container Inventory (as of 2026-06-05)
 
 22 containers across 8 stacks on VM YOUR_VM_IP:
