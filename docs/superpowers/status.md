@@ -1,11 +1,12 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-06T18:30:00-04:00 (Session: fcbc5c78)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED
+> Last updated: 2026-06-09T00:00:00-04:00 (Session: 8c02e948)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ RESTORED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED
 
 ### Core Services
-- ✅ **CORE Memory Pipeline** — v0.7.15, running. **Episode pipeline restored after 9-day outage.** Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
-- ✅ **Hermes Agent (Zella)** — v0.16.0 (pinned `sha256:246fd54b`), all platforms connected. s6-overlay supervised gateway. **Upgraded from v0.15.1 for Desktop compatibility.**
+- ✅ **CORE Memory Pipeline** — v0.7.15, running. Episode pipeline restored. Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
+- ✅ **Hermes Agent (Zella)** — v0.16.0 (pinned `sha256:246fd54b`), all platforms connected. **s6-overlay bootstrap restored to official upstream design.** UID remapped to 1001 (matching host YOUR_VM_USER). MCP bridge running as s6-supervised longrun service.
+- ✅ **CORE Semantic Search** — **RESTORED.** 1567/1567 thoughts have embeddings. 712 missing embeddings backfilled (mxbai-embed-large 1024→768 Matryoshka). Ingestion queue fully cleared.
 - ✅ **Hermes Native MCP** — Built-in `mcp_serve.py` exposed on port 8643 via SSE/HTTP. 10 tools (conversations, messages, events, permissions). Registered as `hermes-native` in Antigravity IDE MCP config. Runs alongside z-relay (additive, not replacement).
 - ✅ **Hermes Desktop** — Remote access via `zella.zb.example.com` (Traefik TLS). Native `_SESSION_TOKEN` auth. 3 Mac deployment (1/3 connected). Dashboard TUI mode enabled.
 - ✅ **synth-mcp** — FULLY OPERATIONAL. Fixed triple bug: (1) config entry was under `streaming:` instead of `mcp_servers:`, (2) URL pointed to wrong port (3080→3081), (3) raw-transport.js imported diagnostic minimal server instead of real server. All 8 tools verified working: `wikijs_create_page`, `wikijs_update_page`, `zulip_post_message`, `synthesizer_status`, `synthesizer_pause`, `synthesizer_resume`, `synthesizer_force_reprocess`, `synthesizer_backfill`.
@@ -55,7 +56,7 @@ All images are now pinned to SHA256 digests to prevent unexpected upgrades:
 | Component | Provider | Model | Endpoint |
 |-----------|----------|-------|----------|
 | CORE Chat/Extraction | OpenAI SDK → OpenRouter | `openai/anthropic/claude-sonnet-4` | `https://openrouter.ai/api/v1` |
-| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (1024-dim) | `http://YOUR_OLLAMA_HOST:11434` |
+| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (768-dim, Matryoshka from 1024) | `http://YOUR_OLLAMA_HOST:11434` |
 | Hermes Primary (config default) | OpenRouter | `nvidia/nemotron-3-super-120b-a12b` | `https://openrouter.ai/api/v1` |
 | Hermes Fallback 1 | OpenAI | `gpt-4o-mini` | `https://api.openai.com/v1` |
 | Hermes Fallback 2 | Ollama (local) | `gemma4:26b-mlx` | `http://YOUR_OLLAMA_HOST:11434/v1` |
@@ -77,25 +78,29 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 ## Session Work Completed
 
-**Session fcbc5c78 (Current — Hermes Native MCP Deployment)**
+**Session 8c02e948 (Current — Hermes s6-Overlay Restore & Memory Pipeline Repair)**
+1. **Hermes s6-Overlay Restored:** Custom `entrypoint:` override in docker-compose.yml was bypassing the official `/init` bootstrap. Hermes ran as UID 10000, skills were root-owned, Docker socket group wasn't set, MCP bridge ran unsupervised. Fix: removed entrypoint, added `HERMES_UID=1001`/`HERMES_GID=1001`, created MCP bridge as proper s6 longrun service, fixed file ownership.
+2. **Cross-Model Plan Review:** GPT-5.5 (via Codex CLI) reviewed deployment plan before execution. Identified 3 improvements incorporated into final plan.
+3. **Memory Search Restored:** Diagnosed semantic search failure (degraded since May 27). Root cause chain: Ollama on Mac unreachable → CORE embedding failures → 712/1567 thoughts missing embeddings → `.slice()` crash on null vectors. Fixed by backfilling all 712 embeddings (Matryoshka truncation 1024→768, L2 renormalized).
+4. **Ingestion Queue Cleared:** Reset 53 failed Postgres rows, re-queued 11 BullMQ failed jobs (all re-processed), cleaned 37 orphaned PENDING rows.
+5. **Config Sync:** Fixed `EMBEDDING_MODEL_SIZE` from 1024→768 (matches `vector(768)` column). Added `GEMINI_API_KEY=not_needed` to silence Docker Compose warning. Repo and VM `.env` files synced.
+
+**Session fcbc5c78 (Previous — Hermes Native MCP Deployment)**
 1. **Hermes Communication Audit:** Audited how Antigravity IDE communicates with Zella. Discovered Hermes ships with `mcp_serve.py` — a built-in MCP server with 10 tools designed for external agent control. Our custom `z-relay` (5 tools) was bypassing this native capability.
 2. **Native MCP Server Deployed:** Created `hermes_mcp_http.py` launcher (in bind-mounted `mcp/` dir) that starts `mcp_serve.py` on `0.0.0.0:8643` with SSE transport. Created `start_with_mcp.sh` wrapper that starts MCP server in background before the gateway process.
 3. **Docker Compose Updated:** Added port `8643:8643` and entrypoint wrapper to `docker-compose.yml`. Container redeployed with zero-downtime for existing services. Backup at `docker-compose.yml.bak`.
-4. **End-to-End Verification:** Full MCP handshake from Mac → VM → Docker confirmed working. `conversations_list` returned live Telegram session data. All 10 native tools operational: `conversations_list`, `conversation_get`, `messages_read`, `messages_send`, `attachments_fetch`, `events_poll`, `events_wait`, `channels_list`, `permissions_list_open`, `permissions_respond`.
+4. **End-to-End Verification:** Full MCP handshake from Mac → VM → Docker confirmed working. `conversations_list` returned live Telegram session data. All 10 native tools operational.
 5. **Antigravity MCP Config Updated:** Registered `hermes-native` in `mcp_config.json` using `mcp-remote` + SSE (same pattern as `openbrain`). z-relay preserved — both servers coexist.
-6. **Comparison Chart Created:** Documented z-relay (5 tools, HTTP+SSH) vs hermes-native (10 tools, in-process) with capability matrix, scorecard, and architecture diagram.
-7. **Story Assets Added:** 3 hero images (the operator & Zella connecting) saved to `docs/the_story/assets/images/` for Chronicle use.
 
 **Session 50794e9b (Previous — Episodic Recency Gap Fix)**
-1. **Episodic Pipeline Restored (9-day outage):** CORE's `ingest-episode` BullMQ worker had been dead since May 28 (upstream CORE v0.7.15 rebuilt, wiping source patches). Fixed via pure configuration: `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL=openrouter` + `OPENAI_API_MODE=chat_completions`. Critical discovery: `MODEL` must use `openai/` prefix (`openai/anthropic/claude-sonnet-4`) to force `getProvider()` through the OpenAI proxy path — without it, `anthropic/*` routes to `api.anthropic.com` directly.
-2. **5 Real Episodes Recovered:** Re-ingested failed episodes from June 1-4 (Chris Lema Three-Brain, MemPalace evaluation, artifact pipeline design, CrowdSec deployment Q&A, personal conversation).
-3. **OpenBrain SDK Migration:** `@google/generative-ai` → `@google/genai` v1.0. Fixed embedding and chat APIs.
-4. **Neo4j Cleanup & MCP Tools:** Cleaned 13 stale/duplicate entities. Added `delete_entities` and `delete_relations` tools to neo4j-memory MCP.
-5. **CORE Version Tracking Established:** Created `docs/maintenance/core-version-tracking.md` with pre-upgrade checklist, post-upgrade verification, and known upstream behaviors. Protects against future CORE rebuilds breaking the pipeline.
-6. **Database Cleanup:** Disabled GPT-5.x, direct Anthropic, and Azure models from `LLMModel` table (no API keys for those providers).
+1. **Episodic Pipeline Restored (9-day outage):** CORE's `ingest-episode` BullMQ worker had been dead since May 28. Fixed via pure configuration: `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL=openrouter` + `OPENAI_API_MODE=chat_completions`. Critical: `MODEL` must use `openai/` prefix.
+2. **5 Real Episodes Recovered:** Re-ingested failed episodes from June 1-4.
+3. **OpenBrain SDK Migration:** `@google/generative-ai` → `@google/genai` v1.0.
+4. **Neo4j Cleanup & MCP Tools:** Cleaned 13 stale/duplicate entities. Added `delete_entities` and `delete_relations` tools.
+5. **CORE Version Tracking Established:** `docs/maintenance/core-version-tracking.md`.
 
 **🔴 NEXT SESSION PRIORITY — READ FIRST**
-- **⚠️ CORE UPGRADE WATCH:** CORE upstream may release new versions that rebuild the container. Configuration is now upgrade-safe (no source patches), BUT the seed process may re-enable disabled models. After any CORE upgrade: (1) check `LLMModel` table for re-enabled GPT models, (2) verify `MODEL=openai/anthropic/claude-sonnet-4` is routing correctly, (3) test episode ingest. See `docs/maintenance/core-version-tracking.md`.
+- **⚠️ CORE UPGRADE WATCH:** After any CORE upgrade: (1) check `LLMModel` table for re-enabled GPT models, (2) verify `MODEL=openai/anthropic/claude-sonnet-4` is routing correctly, (3) test episode ingest. See `docs/maintenance/core-version-tracking.md`.
 - **Transition Z-Brain from experimentation to real work** — Infrastructure is 9/10 but utilization is 3/10. Pick a Tier 1 use case (daily briefing, research assistant, or project status tracking) and make it work end-to-end. See brainstorm artifact in session `05c2bb51`.
 - **Z-Brain Chronicle: Expand stub chapters** — 7 chapters have stubs with notes. Priority: Ch. 2 (Foundation) and Ch. 5 (Giving Zella a Body) need the operator interviews for content that isn't in any log file.
 - **Public repo sync review** — The Chronicle content will be synced via `sync-to-public.sh`. May need to review scrubbing rules for narrative prose (personal name "the operator" → "the operator" etc.). Run `--dry-run` before pushing.
