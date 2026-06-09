@@ -183,6 +183,16 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 - **CORE version tracking established:** `docs/maintenance/core-version-tracking.md` — pre-upgrade checklist and post-upgrade verification for future CORE updates.
 - **Documented:** `docs/maintenance/2026-06-06_episodic-recency-gap-fix.md`
 
+### Session 8c02e948 — Hermes s6-Overlay Restore & Memory Pipeline Repair
+- **💥 Hermes running outside s6-overlay.** Custom `entrypoint:` in docker-compose.yml had been bypassing the official `/init` bootstrap since a prior debugging session. Result: hermes ran as UID 10000 (not host-matching), skills directory was root-owned, Docker socket group wasn't set, MCP bridge ran unsupervised as root.
+- **Fix: restored upstream design.** Removed entrypoint override, added `HERMES_UID=1001`/`HERMES_GID=1001` (matching host `YOUR_VM_USER`), created MCP bridge as proper s6 longrun service (same pattern as built-in dashboard), fixed file ownership.
+- **Cross-model plan review:** GPT-5.5 (via Codex CLI) reviewed the deployment plan before execution. Identified 3 improvements (UID pre-flight check, Docker socket group confirmation, absolute Python path).
+- **💥 Memory search broken.** Semantic search returning "No relevant memories found" — degraded since May 27. Root cause chain: Mac workstation Ollama unreachable → CORE embedding pipeline failures → 712 of 1567 thoughts missing embeddings → `.slice()` crash on null vectors.
+- **53 failed ingestion queue jobs** reset and re-processed. 37 orphaned PENDING rows cleaned up.
+- **712 missing embeddings backfilled** via custom Python script using Matryoshka truncation (mxbai-embed-large 1024→768 dims, L2 renormalized). All 1567 thoughts now have embeddings.
+- **Key discovery: vector dimension mismatch.** Column is `vector(768)` but `.env` said `EMBEDDING_MODEL_SIZE=1024`. CORE handles Matryoshka truncation internally. `.env` corrected to 768.
+- **Config sync:** Repo and VM `.env` files synced. `GEMINI_API_KEY=not_needed` added to silence Docker Compose warning.
+
 ## Container Inventory (as of 2026-06-05)
 
 22 containers across 8 stacks on VM YOUR_VM_IP:
@@ -198,12 +208,12 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 | dashboard | zbrain-dashboard |
 | other | portainer, dockge, zella-speedtest |
 
-## Provider Configuration (as of 2026-06-06)
+## Provider Configuration (as of 2026-06-09)
 
 | Component | Provider | Model |
 |---|---|---|
 | CORE Chat/Extraction | OpenAI SDK → OpenRouter | `openai/anthropic/claude-sonnet-4` |
-| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (1024-dim) |
+| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (768-dim, Matryoshka from 1024) |
 | Hermes Primary | OpenRouter | `nvidia/nemotron-3-super-120b-a12b` |
 | Hermes Fallback 1 | OpenAI | `gpt-4o-mini` |
 | Hermes Fallback 2 | Ollama (local) | `gemma4:26b-mlx` |

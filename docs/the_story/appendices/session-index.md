@@ -10,6 +10,7 @@ Sessions are identified by their conversation ID prefix (8 hex chars) and the pr
 
 | Session ID | Date | Agent | Summary | Related Chapters |
 |---|---|---|---|---|
+| `8c02e948` | 2026-06-08 | Antigravity (Gemini 2.5) | Hermes s6-overlay restore (upstream design). Z-Brain memory pipeline repair — 712 embeddings backfilled (Matryoshka 1024→768). Cross-model review (GPT-5.5 via Codex). | Timeline: Phase 8 |
 | `5198c89f` | 2026-06-05 | Antigravity (Opus Thinking) | Z-Brain Chronicle documentation project launched. Design spec, directory structure, initial content created. Zella inaugural interview conducted. | [Preface](../chapters/00-preface.md) |
 | `7f254e83` | 2026-06-05 | Antigravity | Hermes Desktop remote access deployment. Upgraded Hermes to v0.16.0. Desktop connected via `zella.zb.example.com`. | [Ch. 12](../chapters/12-hermes-desktop.md) |
 | `7f2001ab` | 2026-06-05 | Antigravity | Cron MCP Toolset root-cause investigation. Read Hermes source code AND asked Zella for her account. Fixed `enabled_toolsets` whitelist. | [Ch. 8](../chapters/08-the-gateway-boot-paradox.md) |
