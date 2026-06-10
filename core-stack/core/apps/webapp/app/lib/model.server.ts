@@ -660,9 +660,10 @@ export async function getEmbedding(text: string) {
               new Array(targetDim - lastEmbedding.length).fill(0),
             );
           } else if (lastEmbedding.length > targetDim) {
-            throw new Error(
-              `Embedding dimension mismatch: got ${lastEmbedding.length}, expected ${targetDim}. Update embedding model dimensions and re-embed/migrate vectors.`,
+            logger.warn(
+              `Embedding dimension mismatch: got ${lastEmbedding.length}, expected ${targetDim}. Truncating array to ${targetDim} dimensions (Matryoshka).`
             );
+            lastEmbedding = lastEmbedding.slice(0, targetDim);
           }
         }
         return lastEmbedding;

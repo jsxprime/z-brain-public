@@ -1,12 +1,12 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-09T00:00:00-04:00 (Session: 8c02e948)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ RESTORED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED
+> Last updated: 2026-06-10T17:31:00-04:00 (Session: 3ffb268b)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ FIXED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED
 
 ### Core Services
 - ✅ **CORE Memory Pipeline** — v0.7.15, running. Episode pipeline restored. Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
 - ✅ **Hermes Agent (Zella)** — v0.16.0 (pinned `sha256:246fd54b`), all platforms connected. **s6-overlay bootstrap restored to official upstream design.** UID remapped to 1001 (matching host YOUR_VM_USER). MCP bridge running as s6-supervised longrun service.
-- ✅ **CORE Semantic Search** — **RESTORED.** 1567/1567 thoughts have embeddings. 712 missing embeddings backfilled (mxbai-embed-large 1024→768 Matryoshka). Ingestion queue fully cleared.
+- ✅ **CORE Semantic Search** — **FIXED.** `EMBEDDING_MODEL_SIZE` corrected from 768→1024 (matches `mxbai-embed-large` native output and existing DB vectors/indexes). `gemini-embedding-2` (1024-dim) undeprecated as fallback. `memory_search` MCP tool verified returning results.
 - ✅ **Hermes Native MCP** — Built-in `mcp_serve.py` exposed on port 8643 via SSE/HTTP. 10 tools (conversations, messages, events, permissions). Registered as `hermes-native` in Antigravity IDE MCP config. Runs alongside z-relay (additive, not replacement).
 - ✅ **Hermes Desktop** — Remote access via `zella.zb.example.com` (Traefik TLS). Native `_SESSION_TOKEN` auth. 3 Mac deployment (1/3 connected). Dashboard TUI mode enabled.
 - ✅ **synth-mcp** — FULLY OPERATIONAL. Fixed triple bug: (1) config entry was under `streaming:` instead of `mcp_servers:`, (2) URL pointed to wrong port (3080→3081), (3) raw-transport.js imported diagnostic minimal server instead of real server. All 8 tools verified working: `wikijs_create_page`, `wikijs_update_page`, `zulip_post_message`, `synthesizer_status`, `synthesizer_pause`, `synthesizer_resume`, `synthesizer_force_reprocess`, `synthesizer_backfill`.
@@ -56,7 +56,7 @@ All images are now pinned to SHA256 digests to prevent unexpected upgrades:
 | Component | Provider | Model | Endpoint |
 |-----------|----------|-------|----------|
 | CORE Chat/Extraction | OpenAI SDK → OpenRouter | `openai/anthropic/claude-sonnet-4` | `https://openrouter.ai/api/v1` |
-| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (768-dim, Matryoshka from 1024) | `http://YOUR_OLLAMA_HOST:11434` |
+| CORE Embeddings | Ollama (local) | `mxbai-embed-large` (1024-dim native) | `http://YOUR_OLLAMA_HOST:11434` |
 | Hermes Primary (config default) | OpenRouter | `nvidia/nemotron-3-super-120b-a12b` | `https://openrouter.ai/api/v1` |
 | Hermes Fallback 1 | OpenAI | `gpt-4o-mini` | `https://api.openai.com/v1` |
 | Hermes Fallback 2 | Ollama (local) | `gemma4:26b-mlx` | `http://YOUR_OLLAMA_HOST:11434/v1` |
@@ -78,7 +78,13 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 ## Session Work Completed
 
-**Session CURRENT (Ops Fixes & Timezone Shift)**
+**Session 3ffb268b (Current — Memory Search Dimension Fix)**
+1. **Root-Caused Memory Search Failure:** `memory_search` MCP tool returning zero results with `ERROR: expected 768 dimensions, not 1024`. Traced through `MemoryAgent` → `searchV2` → `pgvector.ts` → PostgreSQL `$queryRaw`. The query was casting vectors to `vector(768)` (from `EMBEDDING_MODEL_SIZE` env var) but the stored vectors and HNSW indexes were all 1024-dimensional.
+2. **Git Archaeology on 768 Origin:** Reconstructed the full history. `768` was the native dimension of the original `gemini-embedding-2` model. When the system migrated to `mxbai-embed-large` (1024-dim native) on May 27, `EMBEDDING_MODEL_SIZE` was correctly set to 1024. During the June 8 backfill session, it was changed back to 768 to match the old column type, but the actual DB data and indexes remained at 1024 — creating the mismatch.
+3. **Fix Applied:** Changed `EMBEDDING_MODEL_SIZE=768` → `EMBEDDING_MODEL_SIZE=1024` in VM `.env`. Undeprecated `gemini-embedding-2` (1024-dim) in `LLMModel` table as available fallback. Restarted `core-app`. No data migration needed — all 6 HNSW indexes already at `vector(1024)`.
+4. **Verified:** `memory_search` MCP tool returns results successfully. No dimension mismatch errors in logs. No `Truncating array` warnings.
+
+**Session PREVIOUS (Ops Fixes & Timezone Shift)**
 1. **System Timezone Shifted:** Migrated Z-Brain ecosystem from UTC to America/New_York (EDT). Changed host VM via `timedatectl`, added `TZ=America/New_York` to all compose files, and injected `tzdata` package into `core-app` Alpine build. All containers verified running on EDT.
 2. **Neo4j Duplicate Relation Bug Fixed:** Root-caused and resolved the relation regeneration loop. The MCP plugin was incorrectly enforcing strict property matching (`MERGE (a)-[r:RELATED_TO {type: $relationType}]->(b)`). Rewrote upsert logic to merge solely on relation geometry and then `SET r.type`, guaranteeing idempotency and exactly one relation per directional pair.
 3. **Episodic Ingestion Verified:** Investigated suspected stall in episodic pipeline. BullMQ worker (`core-app`) verified completely healthy and responsive. Pipeline was merely idle due to zero substantive Telegram conversations with Zella since June 6.

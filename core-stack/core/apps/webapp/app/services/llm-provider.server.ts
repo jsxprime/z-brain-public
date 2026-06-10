@@ -268,8 +268,11 @@ export async function getDefaultEmbeddingInfo(): Promise<EmbeddingInfo | null> {
 }
 
 export async function getEmbeddingDimensions(): Promise<number> {
+  if (env.EMBEDDING_MODEL_SIZE) {
+    return parseInt(env.EMBEDDING_MODEL_SIZE, 10);
+  }
   const info = await getDefaultEmbeddingInfo();
-  return info?.dimensions ?? parseInt(env.EMBEDDING_MODEL_SIZE || "1024", 10);
+  return info?.dimensions ?? 1024;
 }
 
 // ---------------------------------------------------------------------------
