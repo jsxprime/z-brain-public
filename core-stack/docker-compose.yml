@@ -50,6 +50,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+      - ./patches/server-build-dYxw1cQH.js:/app/apps/webapp/build/server/assets/server-build-dYxw1cQH.js:ro
     networks:
       - agent-net
     labels:
