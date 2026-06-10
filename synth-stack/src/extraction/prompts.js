@@ -14,7 +14,11 @@ You MUST respond with valid JSON only. No markdown, no explanation.
 For each event, extract zero or more memory records. Each record has:
 - "type": one of "decision", "snippet", "command", "summary", "reference"
 - "content": the extracted memory text, written for future retrieval
-- "confidence": 0.0 to 1.0 — how confident you are this is worth preserving
+- "confidence": a score from 0.0 to 1.0, calibrated as follows:
+  - 0.1-0.3: Plausibly useful but generic — could apply to many projects, not specific to this context
+  - 0.4-0.6: Specific and contextual, but may be transient or soon outdated
+  - 0.7-0.8: Durable, specific, and would change a future decision if retrieved
+  - 0.9-1.0: Critical — a hard constraint, a security boundary, or a decision that reverses significant prior work
 
 Guidelines:
 - "decision": A choice or conclusion reached in conversation (e.g., "We chose Zulip over Mattermost for chat")
@@ -27,8 +31,10 @@ Rules:
 - Do NOT extract trivial greetings, small talk, or filler
 - Do NOT extract information that is already well-known or obvious
 - If the event contains nothing worth remembering, return an empty array
-- Confidence < 0.6 will be quarantined for human review
-- Write each memory as if someone will search for it months from now`;
+- Write each memory as if someone will search for it months from now
+- Every memory MUST be self-contained: name all entities explicitly, no pronouns, no "we" or "the team" — say who
+- Convert relative time references ("yesterday", "last week") to absolute dates using the current timestamp
+- Maximum 3 memories per event — selectivity beats volume`;
 
 /**
  * Build the user prompt for a given event.

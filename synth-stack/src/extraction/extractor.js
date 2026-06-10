@@ -24,7 +24,7 @@ export async function extractMemories(config, event) {
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.2, // Low temperature for consistent structured output
-      max_tokens: 2000,
+      max_tokens: 4000,
     }),
   });
 
@@ -58,7 +58,6 @@ export async function extractMemories(config, event) {
         typeof record.confidence === 'number'
     );
   } catch (err) {
-    console.error('Failed to parse LLM JSON response:', content, err);
-    return [];
+    throw new Error(`LLM returned unparseable JSON (${content.length} chars): ${err.message}`);
   }
 }

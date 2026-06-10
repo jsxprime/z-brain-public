@@ -13,6 +13,9 @@ const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || 'neo4j';
 // Initialize Neo4j Driver
 const driver = neo4j.driver(NEO4J_URI, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
 
+// Normalize entity names for case-insensitive matching
+const normKey = (s) => s.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+
 // Create MCP Server
 const server = new Server(
   {
@@ -138,9 +141,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       for (const entity of entities) {
         const obs = entity.observations ? entity.observations.join('; ') : '';
         await session.run(
-          `MERGE (e:Entity {name: $name})
-           SET e.type = $type, e.observations = $obs`,
-          { name: entity.name, type: entity.entityType, obs }
+          `MERGE (e:Entity {name_key: $key})
+           ON CREATE SET e.name = $name, e.created_at = datetime()
+           SET e.type = coalesce($type, e.type),
+               e.observations = CASE
+                 WHEN $obs = '' THEN e.observations
+                 WHEN e.observations IS NULL OR e.observations = '' THEN $obs
+                 WHEN e.observations CONTAINS $obs THEN e.observations
+                 ELSE e.observations + '; ' + $obs
+               END`,
+          { key: normKey(entity.name), name: entity.name.trim(), type: entity.entityType ?? null, obs }
         );
         added++;
       }
@@ -153,14 +163,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const relations = args.relations;
       let added = 0;
       for (const rel of relations) {
-        // Cypher requires relationship types to be static, but we can pass standard names 
-        // Using APOC or a generic RELATIONSHIP with a type property if dynamic
         await session.run(
-          `MATCH (a:Entity {name: $from})
-           MATCH (b:Entity {name: $to})
-           MERGE (a)-[r:RELATED_TO]->(b)
-           SET r.type = $relationType`,
-          { from: rel.from, to: rel.to, relationType: rel.relationType }
+          `MATCH (a:Entity {name_key: $fromKey})
+           MATCH (b:Entity {name_key: $toKey})
+           MERGE (a)-[r:RELATED_TO {type: $relationType}]->(b)
+           ON CREATE SET r.created_at = datetime(), r.valid_at = datetime()`,
+          { fromKey: normKey(rel.from), toKey: normKey(rel.to), relationType: rel.relationType }
         );
         added++;
       }
@@ -172,7 +180,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === 'search_entities') {
       const result = await session.run(
         `MATCH (e:Entity)
-         WHERE e.name CONTAINS $query OR e.type CONTAINS $query
+         WHERE toLower(e.name) CONTAINS toLower($query) OR toLower(coalesce(e.type,'')) CONTAINS toLower($query)
          OPTIONAL MATCH (e)-[r:RELATED_TO]->(target)
          RETURN e.name AS name, e.type AS type, e.observations AS observations, collect({to: target.name, type: r.type}) AS relations
          LIMIT 10`,
@@ -196,8 +204,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       let deleted = 0;
       for (const entityName of entityNames) {
         const result = await session.run(
-          `MATCH (e:Entity {name: $name}) DETACH DELETE e RETURN count(e) AS cnt`,
-          { name: entityName }
+          `MATCH (e:Entity {name_key: $key}) DETACH DELETE e RETURN count(e) AS cnt`,
+          { key: normKey(entityName) }
         );
         deleted += result.records[0].get('cnt').toNumber();
       }
@@ -212,11 +220,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       for (const rel of relations) {
         let query, params;
         if (rel.relationType) {
-          query = `MATCH (a:Entity {name: $from})-[r:RELATED_TO {type: $relationType}]->(b:Entity {name: $to}) DELETE r RETURN count(r) AS cnt`;
-          params = { from: rel.from, to: rel.to, relationType: rel.relationType };
+          query = `MATCH (a:Entity {name_key: $fromKey})-[r:RELATED_TO {type: $relationType}]->(b:Entity {name_key: $toKey}) DELETE r RETURN count(r) AS cnt`;
+          params = { fromKey: normKey(rel.from), toKey: normKey(rel.to), relationType: rel.relationType };
         } else {
-          query = `MATCH (a:Entity {name: $from})-[r]->(b:Entity {name: $to}) DELETE r RETURN count(r) AS cnt`;
-          params = { from: rel.from, to: rel.to };
+          query = `MATCH (a:Entity {name_key: $fromKey})-[r]->(b:Entity {name_key: $toKey}) DELETE r RETURN count(r) AS cnt`;
+          params = { fromKey: normKey(rel.from), toKey: normKey(rel.to) };
         }
         const result = await session.run(query, params);
         deleted += result.records[0].get('cnt').toNumber();
