@@ -7,8 +7,11 @@
  * We append provenance metadata to the content so that the memory
  * can be traced back to its source (Zulip message, Wiki.js page, etc.)
  *
+ * The domain is chosen by the LLM during extraction (memory.domain).
+ * Falls back to config.openbrain.domain if the LLM didn't specify one.
+ *
  * @param {object} config - App config (config.openbrain.*)
- * @param {object} memory - Extracted memory { type, content, confidence }
+ * @param {object} memory - Extracted memory { type, content, domain?, confidence }
  * @param {object} provenance - Source metadata { source, sourceId, stream?, topic?, path?, title? }
  * @returns {Promise<{thoughtId: string}>}
  * @throws {Error} If OpenBrain returns a non-200 response.
@@ -28,6 +31,9 @@ export async function commitToOpenBrain(config, memory, provenance) {
 
   const enrichedContent = `[${memory.type}] ${memory.content}\n\n${provenanceLine}`;
 
+  // Use the LLM-chosen domain if available, otherwise fall back to config
+  const domain = memory.domain || config.openbrain.domain;
+
   // OpenBrain MCP capture endpoint
   // The MCP server at openbrain-server:3040 exposes a JSON-RPC interface.
   // For direct HTTP integration, we use the tool's expected input format.
@@ -36,7 +42,7 @@ export async function commitToOpenBrain(config, memory, provenance) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       content: enrichedContent,
-      domain: config.openbrain.domain,
+      domain,
     }),
   });
 
@@ -47,3 +53,4 @@ export async function commitToOpenBrain(config, memory, provenance) {
   const data = await response.json();
   return { thoughtId: data.id || null };
 }
+

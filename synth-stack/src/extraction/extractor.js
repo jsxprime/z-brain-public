@@ -1,14 +1,16 @@
-import { SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
+import { buildSystemPrompt, buildUserPrompt } from './prompts.js';
 
 /**
  * Call the LLM to extract memory records from a raw event.
  *
  * @param {object} config - App config (config.llm.*)
  * @param {object} event - The raw event from the events table { source, payload }
- * @returns {Promise<Array<{type: string, content: string, confidence: number}>>}
- * @throws {Error} If the LLM API returns a non-200 response
+ * @param {string[]} [availableDomains] - Domain names from OpenBrain for LLM domain selection.
+ * @returns {Promise<Array<{type: string, content: string, domain: string, confidence: number}>>}
+ * @throws {Error} If the LLM API returns a non-200 response or unparseable content
  */
-export async function extractMemories(config, event) {
+export async function extractMemories(config, event, availableDomains = []) {
+  const systemPrompt = buildSystemPrompt(availableDomains);
   const userPrompt = buildUserPrompt(event);
 
   const response = await fetch(config.llm.apiUrl, {
@@ -20,7 +22,7 @@ export async function extractMemories(config, event) {
     body: JSON.stringify({
       model: config.llm.model,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.2, // Low temperature for consistent structured output
@@ -36,7 +38,7 @@ export async function extractMemories(config, event) {
   const content = data.choices?.[0]?.message?.content;
 
   if (!content) {
-    return [];
+    throw new Error('LLM returned 200 but no message content — possible rate limit or empty response');
   }
 
   try {
@@ -49,7 +51,7 @@ export async function extractMemories(config, event) {
       return [];
     }
 
-    // Validate each record has required fields
+    // Validate each record has required fields (domain is optional — falls back in commit layer)
     return parsed.filter(
       (record) =>
         record &&
@@ -61,3 +63,4 @@ export async function extractMemories(config, event) {
     throw new Error(`LLM returned unparseable JSON (${content.length} chars): ${err.message}`);
   }
 }
+

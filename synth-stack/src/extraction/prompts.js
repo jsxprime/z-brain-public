@@ -3,9 +3,23 @@
  *
  * The LLM receives a normalized event (chat message or wiki page)
  * and returns structured JSON describing what memories to extract.
+ *
+ * The system prompt is a function so we can inject the available domains
+ * list at runtime — the LLM picks the best-fit domain for each memory.
  */
 
-export const SYSTEM_PROMPT = `You are a Memory Curator for the Z-Brain ecosystem.
+/**
+ * Build the system prompt with available domains injected.
+ *
+ * @param {string[]} availableDomains - Domain names from OpenBrain's list_domains.
+ * @returns {string} The system prompt.
+ */
+export function buildSystemPrompt(availableDomains = []) {
+  const domainList = availableDomains.length > 0
+    ? `\nAvailable domains: ${availableDomains.join(', ')}\nPick the single best-fit domain from this list for each memory. If none fit well, you may suggest a short, lowercase, hyphenated new domain name.`
+    : '\nFor "domain", use a short, lowercase, hyphenated label describing the subject area (e.g., "engineering", "personal", "homelab").';
+
+  return `You are a Memory Curator for the Z-Brain ecosystem.
 Your job is to analyze incoming events (chat messages and wiki pages) and extract
 durable memories that should be preserved for future context retrieval.
 
@@ -14,6 +28,7 @@ You MUST respond with valid JSON only. No markdown, no explanation.
 For each event, extract zero or more memory records. Each record has:
 - "type": one of "decision", "snippet", "command", "summary", "reference"
 - "content": the extracted memory text, written for future retrieval
+- "domain": the knowledge domain this memory belongs to${domainList}
 - "confidence": a score from 0.0 to 1.0, calibrated as follows:
   - 0.1-0.3: Plausibly useful but generic — could apply to many projects, not specific to this context
   - 0.4-0.6: Specific and contextual, but may be transient or soon outdated
@@ -35,6 +50,7 @@ Rules:
 - Every memory MUST be self-contained: name all entities explicitly, no pronouns, no "we" or "the team" — say who
 - Convert relative time references ("yesterday", "last week") to absolute dates using the current timestamp
 - Maximum 3 memories per event — selectivity beats volume`;
+}
 
 /**
  * Build the user prompt for a given event.
@@ -53,7 +69,7 @@ Content:
 ${event.payload.content}
 
 Respond with a JSON array of memory objects. Example:
-[{"type": "decision", "content": "Team decided to use Postgres for the event queue", "confidence": 0.9}]
+[{"type": "decision", "content": "Team decided to use Postgres for the event queue", "domain": "engineering", "confidence": 0.9}]
 
 If nothing is worth extracting, respond with: []`;
   }
@@ -68,7 +84,7 @@ Content:
 ${event.payload.content}
 
 Respond with a JSON array of memory objects. Example:
-[{"type": "snippet", "content": "Docker compose template for Traefik reverse proxy: ...", "confidence": 0.95}]
+[{"type": "snippet", "content": "Docker compose template for Traefik reverse proxy: ...", "domain": "homelab", "confidence": 0.95}]
 
 If nothing is worth extracting, respond with: []`;
   }

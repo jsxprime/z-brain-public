@@ -81,7 +81,21 @@ export async function processBatch(pool, config) {
     claimClient.release();
   }
 
-  // ── CORE session setup (per-batch, best-effort) ───────────────────────
+  // ── Pre-process setup (per-batch, best-effort) ────────────────────────
+
+  // Fetch available domains from OpenBrain for LLM domain selection
+  let availableDomains = [];
+  try {
+    const domainRes = await fetch(`${config.openbrain.url}/list_domains`);
+    if (domainRes.ok) {
+      availableDomains = await domainRes.json();
+      if (!Array.isArray(availableDomains)) availableDomains = [];
+    }
+  } catch (domainErr) {
+    console.warn('Could not fetch OpenBrain domains (proceeding without):', domainErr.message);
+  }
+
+  // CORE session setup
   let coreSessionId = null;
   if (config.core.enabled) {
     try {
@@ -99,10 +113,11 @@ export async function processBatch(pool, config) {
 
     // Phase 2: Extract (no transaction — LLM call can take 30+ seconds)
     try {
-      memories = await extractMemories(config, {
-        source: event.source,
-        payload: event.payload,
-      });
+      memories = await extractMemories(
+        config,
+        { source: event.source, payload: event.payload },
+        availableDomains
+      );
     } catch (extractErr) {
       eventError = extractErr;
       console.error(`Extraction failed for event ${event.id}:`, extractErr.message);
