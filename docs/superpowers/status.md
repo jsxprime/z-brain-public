@@ -1,7 +1,7 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-10T21:23:00-04:00 (Session: 2813cae8)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ FIXED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED | Fable 5 ✅ 10/10 COMPLETE | Recall Facade ✅ LIVE
+> Last updated: 2026-06-11T13:49:00-04:00 (Session: 5086fad4)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ FIXED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED | Fable 5 ✅ 10/10 COMPLETE | Recall Facade ✅ LIVE | OpenBrain Embeddings ✅ UNIFIED 1024-dim
 
 ### Core Services
 - ✅ **CORE Memory Pipeline** — v0.7.15, running. Episode pipeline restored. Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
@@ -48,7 +48,7 @@
 | Hermes Fallback 2 | Ollama (local) | `gemma4:26b-mlx` | `http://YOUR_OLLAMA_HOST:11434/v1` |
 | Cron Jobs (pinned) | OpenRouter | `anthropic/claude-sonnet-4` | `https://openrouter.ai/api/v1` |
 | OpenBrain Server (Chat) | OpenRouter | `openai/gpt-4o-mini` | `https://openrouter.ai/api/v1` |
-| OpenBrain Server (Embed) | OpenRouter | `google/gemini-embedding-2-preview` | `https://openrouter.ai/api/v1` |
+| OpenBrain Server (Embed) | OpenRouter | `google/gemini-embedding-2` (1024-dim, GA) | `https://openrouter.ai/api/v1` |
 | Synthesizer LLM | Hermes Agent | via `hermes-agent:8642` | Internal Docker network |
 
 ## Architecture — Automatic Pipeline
@@ -62,7 +62,15 @@ Everything from event capture to memory storage runs autonomously 24/7. The only
 
 ## Session Work Completed
 
-**Session 2813cae8 (Current — Fable 5 Items #3-#6 + LLM Domain)**
+**Session 5086fad4 (Current — Embedding Unification + Diagnostics)**
+Unified all OpenBrain embeddings to 1024-dim, fixed 429 spending cap blocker, diagnosed synth pipeline staleness. Commits: see git log.
+
+1. **OpenBrain embedding model swap:** Changed from `google/gemini-embedding-2-preview` (hitting Google AI Studio 429 spending cap) to `google/gemini-embedding-2` (GA). Fixed both OpenRouter and Gemini SDK fallback paths.
+2. **Dimension unification 768→1024:** Altered DB column from `vector(768)` to `vector(1024)`, rebuilt HNSW index, re-embedded all 1,890 thoughts with zero failures. OpenBrain now matches CORE's 1024-dim `mxbai-embed-large` vectors.
+3. **Synth pipeline diagnosis:** Investigated 7-day staleness — confirmed pipeline is healthy, was idle due to no new Zulip/Wiki.js events since June 4. Pipeline resumed when the operator created a Wiki.js page via Telegram.
+4. **Re-embedding migration script:** Created `scripts/openbrain-server/re-embed-1024.js` — idempotent batch re-embedding tool with rate limiting, progress tracking, and dry-run mode.
+
+**Session 2813cae8 (Fable 5 Items #3-#6 + LLM Domain)**
 Completed all remaining Fable 5 items. Commits: `8466271`, `f9c0ce8`, `3b4f980`.
 
 1. **#4 — Synth LLM-chosen domain + hardening:** `buildSystemPrompt(availableDomains)` replaces static `SYSTEM_PROMPT`. Worker fetches 13 domains from OpenBrain per batch. `openbrain.js` uses `memory.domain` with config fallback. Empty LLM content throws instead of returning `[]`.
@@ -95,11 +103,13 @@ Resolved 6 of 10 Fable 5 architectural recommendations across three implementati
 
 ### Strategic — Feature Work
 
-**Synth pipeline flow testing** — The pipeline has been idle for 148h (no new Zulip/Wiki events). Post a test message in Zulip, verify end-to-end: webhook → event table → extraction (with new LLM-chosen domain) → OpenBrain commit → CORE dual-write. This would be the first real test of the domain classification feature.
+**Synth pipeline flow testing** — ~~Pipeline was idle for 148h.~~ PARTIALLY RESOLVED: Pipeline resumed processing (Wiki.js page created by the operator via Telegram on June 11). Still worth testing the Zulip webhook path end-to-end.
 
 **Dashboard polish** — Use `impeccable` skill to refine the Z-Brain Dashboard UI at `dash.zb.example.com`.
 
 **Claude Code z-relay integration** — z-relay MCP doesn't load in Claude Code sessions. Needed for recall to reach all IDE agents.
+
+**Agent-Managed Business Stack** — the operator created a major architecture doc via Telegram (Twenty CRM, Stripe, etc.). Zella saved to Wiki.js + OpenBrain + Neo4j. May need follow-up implementation work.
 
 ### 📝 CONTENT PROJECT (flagged by user)
 - **Z-Brain Build Story** — Extract the full build journey into a blog post series or narrative. Raw material: conversation transcripts (JSONL), status.md session summaries, OpenBrain captures, artifacts. Follows the Meta-Content Cascade strategy from Slopthing.

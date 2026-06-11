@@ -102,9 +102,9 @@ async function getEmbeddingViaOpenRouter(text) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-embedding-2-preview",
+      model: "google/gemini-embedding-2",
       input: text,
-      dimensions: 768,
+      dimensions: 1024,
     }),
   });
 
@@ -124,7 +124,7 @@ async function getEmbeddingViaGeminiSDK(text) {
   const result = await genAI.models.embedContent({
     model: "gemini-embedding-2",
     contents: text,
-    config: { outputDimensionality: 768 },
+    config: { outputDimensionality: 1024 },
   });
   if (!result.embeddings || !result.embeddings[0] || !result.embeddings[0].values) {
     throw new Error("No embedding values returned from Gemini SDK");
