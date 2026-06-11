@@ -199,6 +199,29 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 - **Episodic ingestion investigated:** Flagged by SITREP. Verified `core-app` BullMQ worker was healthy and empty; ingestion was idle organically due to no new Telegram interactions, not stalled.
 - **Configuration drift incident:** Accidental overwrite of live `docker-compose.yml` with outdated local version crashed Hermes (lost `HERMES_UID=1001` leading to `[Errno 13] Permission denied`). Reconstructed live compose file, restored UID, and learned critical lesson about VM/local sync boundaries.
 
+---
+
+## Phase 9: Architectural Review & Hardening
+
+### Session c0ff9750 — Fable 5 Memory Architecture Review
+- **First external architectural review.** Claude Fable 5 (claude-fable-5) reviewed the entire memory architecture against a 15K-token briefing document. Produced a 200-line structured report answering 8 architectural questions.
+- **Three cross-cutting findings:** (a) Silent failure is the default — error paths catch, log, and continue, making "couldn't check" indistinguishable from "nothing found." (b) Quarantine gate is structurally broken — the prompt tells the model the 0.6 threshold, anchoring it to never score below. (c) Write paths duplicated, read paths missing — no agent has a single `recall()` call fusing memory layers.
+- **Top 10 prioritized recommendations** ranging from hours to days of effort, covering memory freshness alarms, extraction prompt fixes, recall facades, session-start hooks, and synth→CORE routing convergence.
+- **Entity duplication root-caused** — Fable 5 hypothesized (correctly) that relation duplicates were an entity-resolution bug, not a MERGE bug. 17+ entities had duplicate nodes across CORE and MCP write paths.
+
+### Session e90e6146 — Fable 5 Implementation (Items 1-5 + 2 Bugs)
+- **All 5 prioritized items executed in a single session:**
+  1. Core-app crash investigation: determined manual container cycling caused the 41h gap (not a crash loop)
+  2. Extraction prompt: removed threshold disclosure, added rubric confidence, self-containment rules, date anchoring, max 3 extractions, raised max_tokens 2000→4000, made JSON parse failure retryable
+  3. Neo4j entity dedup: 23 duplicate nodes merged via Cypher, uniqueness constraint on `name_key`, write-time prevention deployed in MCP plugin
+  4. Daily morning brief cron: already existed from prior session, verified correct
+  5. Synth worker: full rewrite to claim→process→record pattern with idempotency keys
+- **Two additional bugs discovered and fixed:**
+  - **Bug #2 (DATA LOSS):** `memory_ingest` MCP tool crashed silently on undefined `message` parameter. `countTokens()` → `gpt-tokenizer encode()` called on undefined. Returned HTTP 200 with `isError: true` — agents ignored the error and moved on. Fix: input guard rejecting empty messages.
+  - **Bug #1 (noise):** `prisma.mCPSession.update()` "Record to update not found" every ~3 min. `deleteSession()` used `.update()` on sessions that were never persisted. Fix: `.updateMany()` with `deleted:null` filter.
+  - **Both fixes deployed via bind mount** of patched `server-build-dYxw1cQH.js` — survives restarts, must be re-applied after upstream image rebuild.
+- **Commits:** `27d327f` (synth + neo4j), `9e8f1d1` (core-app patches)
+
 ## Container Inventory (as of 2026-06-05)
 
 22 containers across 8 stacks on VM YOUR_VM_IP:
