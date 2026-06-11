@@ -34,10 +34,24 @@ export function registerHealthRoutes(app, pool) {
         FROM events
       `);
 
+      // Freshness: when was the last event received and processed?
+      const freshnessResult = await pool.query(`
+        SELECT
+          MAX(processed_at) FILTER (WHERE status = 'completed') AS last_processed,
+          MAX(created_at) AS last_received,
+          EXTRACT(EPOCH FROM (NOW() - MAX(processed_at) FILTER (WHERE status = 'completed'))) AS seconds_since_last_process,
+          EXTRACT(EPOCH FROM (NOW() - MAX(created_at))) AS seconds_since_last_event
+        FROM events
+      `);
+
       const stats = statsResult.rows[0];
+      const freshness = freshnessResult.rows[0];
+      const STALE_THRESHOLD_HOURS = 6;
+      const secondsSinceProcess = parseFloat(freshness.seconds_since_last_process) || null;
+      const isStale = secondsSinceProcess !== null && secondsSinceProcess > (STALE_THRESHOLD_HOURS * 3600);
 
       return reply.code(200).send({
-        status: 'ok',
+        status: isStale ? 'stale' : 'ok',
         service: 'memory-synthesizer',
         database: { connected: true, time: dbResult.rows[0].time },
         queue: {
@@ -46,6 +60,14 @@ export function registerHealthRoutes(app, pool) {
           completed: parseInt(stats.completed, 10),
           failed: parseInt(stats.failed, 10),
           quarantined: parseInt(stats.quarantined, 10),
+        },
+        freshness: {
+          lastProcessed: freshness.last_processed,
+          lastReceived: freshness.last_received,
+          hoursSinceLastProcess: secondsSinceProcess ? Math.round(secondsSinceProcess / 3600 * 10) / 10 : null,
+          hoursSinceLastEvent: freshness.seconds_since_last_event ? Math.round(parseFloat(freshness.seconds_since_last_event) / 3600 * 10) / 10 : null,
+          staleThresholdHours: STALE_THRESHOLD_HOURS,
+          isStale,
         },
       });
     } catch (err) {
