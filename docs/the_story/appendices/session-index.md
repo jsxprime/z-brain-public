@@ -10,6 +10,7 @@ Sessions are identified by their conversation ID prefix (8 hex chars) and the pr
 
 | Session ID | Date | Agent | Summary | Related Chapters |
 |---|---|---|---|---|
+| `ccbaa298` | 2026-06-10 | Antigravity (Gemini 2.5) | Fable 5 Tier 1-3: Neo4j temporal relation fields (#8), synth→CORE episodic routing (#10), unified memory access docs (#9), memory-freshness alarm (#1). 6 of 10 Fable 5 items resolved. Entity dedup investigation (clean). Prompt fix verified. | Timeline: Phase 9 |
 | `e90e6146` | 2026-06-10 | Antigravity (Gemini 2.5) | Fable 5 implementation: all 5 priority items executed (extraction prompt, Neo4j dedup, synth worker tx, crash investigation, morning brief). Plus 2 core-app bugs fixed (memory_ingest data loss, session heartbeat noise) via bind-mount patches. | Timeline: Phase 9 |
 | `c0ff9750` | 2026-06-10 | Antigravity (Gemini 2.5) | Fable 5 Memory Architecture Review. Prepared 15K-token briefing, ran Claude Fable 5 read-only review. Produced 200-line report with 10 prioritized recommendations. Created 5-item implementation plan. | Timeline: Phase 9 |
 | `73e58237` | 2026-06-09 | Antigravity (Gemini 3.1) | Timezone shifted to EDT. Neo4j duplicate relation bug fixed. Episodic ingestion stall investigated. Recovered from accidental compose overwrite (permission denied). | Timeline: Phase 8 |

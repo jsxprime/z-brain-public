@@ -222,6 +222,19 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
   - **Both fixes deployed via bind mount** of patched `server-build-dYxw1cQH.js` — survives restarts, must be re-applied after upstream image rebuild.
 - **Commits:** `27d327f` (synth + neo4j), `9e8f1d1` (core-app patches)
 
+### Session ccbaa298 — Fable 5 Tier 1-3 (Temporal Fields, CORE Routing, Freshness Alarm)
+- **6 of 10 Fable 5 recommendations resolved** across three implementation tiers:
+- **Tier 1+2 (3 items):**
+  - **#8 — Neo4j temporal relation fields:** Added `valid_at`/`invalid_at` timestamps on all relations. `add_relations` refreshes `valid_at` on every MERGE. New `invalidate_relations` tool marks facts as superseded. New `search_relations` tool with temporal filtering. `search_entities` filters out invalidated relations by default. Backfilled `valid_at` on all 99 existing relations.
+  - **#10 — Synth→CORE routing:** Created `core-ingest.js` MCP Streamable HTTP client module. Worker now dual-writes: OpenBrain (primary) + CORE episodic pipeline (secondary, best-effort). Same MCP JSON-RPC protocol used by all agents. Optional config via `CORE_MCP_URL`/`CORE_MCP_TOKEN` env vars.
+  - **#9 — Unified memory access:** Audited cron job toolsets (all correct). Documented `skip_memory=True` rationale (correct upstream design — prevents cron prompts from corrupting user memory). Added Memory Access Architecture section to SOUL.md. Created `docs/architecture/memory-access-patterns.md` reference (3-layer model, agent access matrix, pipeline flow).
+- **Tier 3 (3 items, 2 already resolved):**
+  - **#1 — Memory freshness alarm:** Added `freshness` object to `/health/detailed` endpoint (`lastProcessed`, `hoursSinceLastProcess`, `isStale`, `staleThresholdHours: 6`). Status degrades `ok`→`stale`. Immediately caught real 148h gap. Updated Health Check cron to curl synth health and escalate via Pushover when stale.
+  - **#2 — Extraction prompt fix:** Already deployed in session e90e6146. Verified current state.
+  - **#7 — Entity dedup investigation:** Ran dedup queries — zero duplicates across 583 entities. `normKey()` normalization is working.
+- **Commits:** `3487ae7` (Tier 1+2), `3754d06` (Tier 3)
+- **Remaining 4 items deferred:** #4 (synth txn restructure), #3 (daily brief), #5 (recall facade), #6 (session-start recall)
+
 ## Container Inventory (as of 2026-06-05)
 
 22 containers across 8 stacks on VM YOUR_VM_IP:
