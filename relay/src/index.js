@@ -6,11 +6,12 @@ import * as zellaChat from "./tools/zella-chat.js";
 import * as zellaFeed from "./tools/zella-feed.js";
 import * as zellaBriefing from "./tools/zella-briefing.js";
 import * as zellaShare from "./tools/zella-share.js";
+import * as zellaRecall from "./tools/zella-recall.js";
 
 export function createServer() {
   const server = new McpServer({
     name: "z-relay",
-    version: "1.0.0"
+    version: "1.1.0"
   });
 
   server.tool(
@@ -44,6 +45,13 @@ export function createServer() {
     zellaShare.schema.description,
     zellaShare.schema.parameters,
     zellaShare.handler
+  );
+
+  server.tool(
+    zellaRecall.schema.name,
+    zellaRecall.schema.description,
+    zellaRecall.schema.parameters,
+    zellaRecall.handler
   );
 
   return server;

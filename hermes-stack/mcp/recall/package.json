@@ -1,0 +1,11 @@
+{
+  "name": "recall-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Unified memory recall MCP server — fans out to OpenBrain, CORE, and Neo4j",
+  "main": "index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "neo4j-driver": "^5.27.0"
+  }
+}
