@@ -235,6 +235,36 @@ This timeline is reconstructed from session logs in `docs/superpowers/status.md`
 - **Commits:** `3487ae7` (Tier 1+2), `3754d06` (Tier 3)
 - **Remaining 4 items deferred:** #4 (synth txn restructure), #3 (daily brief), #5 (recall facade), #6 (session-start recall)
 
+### Session 2813cae8 — Fable 5 Complete (Items #3-#6 + LLM Domain)
+- **All remaining Fable 5 items resolved in a single session** — 10/10 complete.
+- **#4 — LLM-chosen domain classification:**
+  - Static `SYSTEM_PROMPT` constant replaced with `buildSystemPrompt(availableDomains)` factory function
+  - Worker fetches 13 available domains from OpenBrain's `/list_domains` per batch
+  - Extractor injects domain list into prompt; LLM picks best-fit per memory
+  - Committer uses `memory.domain` from LLM with config fallback
+  - **Hardening:** Empty LLM content now throws `Error` instead of silently returning `[]`
+- **#3 — Daily morning brief schedule fix:**
+  - Was already deployed from session e90e6146. Schedule updated from `0 7 * * *` (3 AM EDT) to `0 14 * * *` (10 AM EDT)
+  - Manual test verified: Zella checked all memory layers, produced structured brief, sent Pushover notification
+  - Runs daily on Claude Sonnet 4 via OpenRouter
+- **#5 — Recall facade MCP server:** The highest-leverage remaining item.
+  - Standalone MCP server at `hermes-stack/mcp/recall/index.js`
+  - Fans out in parallel to all three memory layers:
+    - OpenBrain via MCP SDK SSE client (`@modelcontextprotocol/sdk/client/sse.js`)
+    - CORE via MCP Streamable HTTP (manual JSON-RPC with session management)
+    - Neo4j via Bolt driver (`neo4j-driver`)
+  - Merge → deduplicate (substring overlap) → rank (score then recency) → return with provenance tags
+  - Registered in Hermes `config.yaml` with env vars for all three backends
+  - Z-relay wrapper `zella_recall` added for IDE access through existing Hermes API proxy
+  - **Verified end-to-end:** OpenBrain 5 results, CORE 1 result, Neo4j 0 results (expected) for test query
+- **#6 — Session-start recall hook:**
+  - `z-cortex-session-sync` SKILL.md updated: new Step 4 "Recall Relevant Context" in startup workflow
+  - `z-brain-zella-comms` SKILL.md updated: `zella_recall` added to tools table, Step 2 in startup checklist
+  - **New "Decision-Time Capture Convention"** section: capture decisions mid-session via `openbrain capture` with `[decision]` prefix — don't wait for teardown
+- **Architectural note:** Initial OpenBrain implementation used direct HTTP POST to `/search` — returned 404. OpenBrain is an MCP server, not a REST API. Fixed to use the SDK's SSEClientTransport with lazy connection caching.
+- **Commits:** `8466271` (synth LLM domain), `f9c0ce8` (recall facade), `3b4f980` (OpenBrain SSE fix)
+- **Milestone: Fable 5 is complete.** All 10 architectural recommendations from the Claude Fable 5 review have been implemented across 4 sessions (c0ff9750, e90e6146, ccbaa298, 2813cae8).
+
 ## Container Inventory (as of 2026-06-05)
 
 22 containers across 8 stacks on VM YOUR_VM_IP:
