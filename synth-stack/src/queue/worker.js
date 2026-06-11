@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { extractMemories } from '../extraction/extractor.js';
 import { commitToOpenBrain } from '../commit/openbrain.js';
+import { initializeCORESession, ingestIntoCORE } from '../commit/core-ingest.js';
 
 /**
  * Generate a deterministic idempotency key for a memory record.
@@ -80,6 +81,17 @@ export async function processBatch(pool, config) {
     claimClient.release();
   }
 
+  // ── CORE session setup (per-batch, best-effort) ───────────────────────
+  let coreSessionId = null;
+  if (config.core.enabled) {
+    try {
+      coreSessionId = await initializeCORESession(config);
+      console.log(`CORE ingest session initialized: ${coreSessionId}`);
+    } catch (coreInitErr) {
+      console.error('CORE session init failed (ingest disabled for this batch):', coreInitErr.message);
+    }
+  }
+
   // ── Phase 2 + 3: Process each event independently ────────────────────
   for (const event of events) {
     let memories = [];
@@ -147,6 +159,22 @@ export async function processBatch(pool, config) {
             } catch (commitErr) {
               console.error(`OpenBrain commit failed for event ${event.id}:`, commitErr.message);
               // Don't fail the whole event — just mark this memory as not committed
+            }
+
+            // Best-effort: also push to CORE for entity/statement extraction
+            if (coreSessionId && openbrainThoughtId) {
+              try {
+                const enrichedContent = `[${memory.type}] ${memory.content}`;
+                const coreResult = await ingestIntoCORE(config, enrichedContent, coreSessionId);
+                if (coreResult.success) {
+                  console.log(`CORE ingest OK for event ${event.id} (type: ${memory.type})`);
+                } else {
+                  console.warn(`CORE ingest failed for event ${event.id}: ${coreResult.error}`);
+                }
+              } catch (coreErr) {
+                console.error(`CORE ingest error for event ${event.id}:`, coreErr.message);
+                // Non-fatal — OpenBrain commit already succeeded
+              }
             }
           }
 

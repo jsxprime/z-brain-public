@@ -79,13 +79,47 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'search_entities',
-        description: 'Search for entities by name or type and retrieve their properties and relationships.',
+        description: 'Search for entities by name or type and retrieve their properties and active relationships. Invalidated (historical) relations are excluded by default.',
         inputSchema: {
           type: 'object',
           properties: {
             query: { type: 'string', description: 'Name or type to search for' }
           },
           required: ['query']
+        }
+      },
+      {
+        name: 'search_relations',
+        description: 'Search for relations by entity name or relation type. Returns matching relations with their temporal metadata (created_at, valid_at, invalid_at). By default only returns active (non-invalidated) relations.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Entity name or relation type to search for' },
+            includeInvalid: { type: 'boolean', description: 'If true, also return invalidated historical relations. Default: false.' }
+          },
+          required: ['query']
+        }
+      },
+      {
+        name: 'invalidate_relations',
+        description: 'Mark relations as no longer valid (sets invalid_at timestamp). Use when a relationship has ended or been superseded by new information. The relation is preserved for historical context but excluded from default searches.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            relations: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  from: { type: 'string', description: 'Source entity name' },
+                  to: { type: 'string', description: 'Target entity name' },
+                  relationType: { type: 'string', description: 'Type of relationship to invalidate' }
+                },
+                required: ['from', 'to', 'relationType']
+              }
+            }
+          },
+          required: ['relations']
         }
       },
       {
@@ -167,7 +201,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           `MATCH (a:Entity {name_key: $fromKey})
            MATCH (b:Entity {name_key: $toKey})
            MERGE (a)-[r:RELATED_TO {type: $relationType}]->(b)
-           ON CREATE SET r.created_at = datetime(), r.valid_at = datetime()`,
+           ON CREATE SET r.created_at = datetime()
+           SET r.valid_at = datetime()`,
           { fromKey: normKey(rel.from), toKey: normKey(rel.to), relationType: rel.relationType }
         );
         added++;
@@ -181,7 +216,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const result = await session.run(
         `MATCH (e:Entity)
          WHERE toLower(e.name) CONTAINS toLower($query) OR toLower(coalesce(e.type,'')) CONTAINS toLower($query)
-         OPTIONAL MATCH (e)-[r:RELATED_TO]->(target)
+         OPTIONAL MATCH (e)-[r:RELATED_TO]->(target) WHERE r.invalid_at IS NULL
          RETURN e.name AS name, e.type AS type, e.observations AS observations, collect({to: target.name, type: r.type}) AS relations
          LIMIT 10`,
         { query: args.query }
@@ -196,6 +231,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       return {
         content: [{ type: 'text', text: JSON.stringify(entities, null, 2) }],
+      };
+    }
+
+    if (name === 'search_relations') {
+      const includeInvalid = args.includeInvalid === true;
+      const validityFilter = includeInvalid ? '' : 'AND r.invalid_at IS NULL';
+      const result = await session.run(
+        `MATCH (a:Entity)-[r:RELATED_TO]->(b:Entity)
+         WHERE (toLower(a.name) CONTAINS toLower($query)
+                OR toLower(b.name) CONTAINS toLower($query)
+                OR toLower(r.type) CONTAINS toLower($query))
+         ${validityFilter}
+         RETURN a.name AS from, b.name AS to, r.type AS relationType,
+                r.created_at AS createdAt, r.valid_at AS validAt, r.invalid_at AS invalidAt
+         ORDER BY r.valid_at DESC
+         LIMIT 20`,
+        { query: args.query }
+      );
+
+      const relations = result.records.map(record => ({
+        from: record.get('from'),
+        to: record.get('to'),
+        relationType: record.get('relationType'),
+        createdAt: record.get('createdAt')?.toString() || null,
+        validAt: record.get('validAt')?.toString() || null,
+        invalidAt: record.get('invalidAt')?.toString() || null,
+      }));
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(relations, null, 2) }],
+      };
+    }
+
+    if (name === 'invalidate_relations') {
+      const relations = args.relations;
+      let invalidated = 0;
+      for (const rel of relations) {
+        const result = await session.run(
+          `MATCH (a:Entity {name_key: $fromKey})-[r:RELATED_TO {type: $relationType}]->(b:Entity {name_key: $toKey})
+           WHERE r.invalid_at IS NULL
+           SET r.invalid_at = datetime()
+           RETURN count(r) AS cnt`,
+          { fromKey: normKey(rel.from), toKey: normKey(rel.to), relationType: rel.relationType }
+        );
+        invalidated += result.records[0].get('cnt').toNumber();
+      }
+      return {
+        content: [{ type: 'text', text: `Invalidated ${invalidated} relations.` }],
       };
     }
 

@@ -126,3 +126,23 @@ You have access to the Memory Synthesizer MCP server (synth-mcp), which gives yo
 - **synthesizer_backfill** — Reprocess all events in a date range
 
 Use synthesizer_status when asked about the health of the memory pipeline. Use pause/resume when the operator wants to stop processing temporarily (e.g., during maintenance).
+
+## Memory Access Architecture
+
+You have access to three memory layers through MCP tools:
+
+1. **Neo4j Knowledge Graph** (neo4j_memory) — Entities, relationships, temporal facts. Relations now carry valid_at and invalid_at timestamps. When searching, only active (non-invalidated) relations are returned by default. Use invalidate_relations when a fact has been superseded.
+
+2. **OpenBrain** (openbrain) — Domain-segregated thoughts, captures, persona briefs. Cross-agent durable memory. Use capture for decisions and discoveries, search for context retrieval.
+
+3. **CORE Episodes** (z-brain) — Vectorized conversation chunks, entity/statement extraction. Use memory_search for semantic recall, memory_ingest to store conversation summaries.
+
+### Cron Jobs and Memory
+
+In cron jobs: Your native memory tool is deliberately disabled (skip_memory=True) to prevent system prompts from corrupting user memory representations. This is correct by design. Use MCP tools instead — they are available through your enabled_toolsets configuration.
+
+In conversations: Both native memory and MCP tools are available. Prefer MCP tools for explicit reads and writes. The native memory tool handles automatic context loading.
+
+### Memory Pipeline
+
+Content from Zulip and Wiki.js is automatically extracted by the Memory Synthesizer, committed to OpenBrain, and now also routed to CORE for entity/statement extraction. This pipeline runs autonomously — you do not need to manually capture Zulip/Wiki content.

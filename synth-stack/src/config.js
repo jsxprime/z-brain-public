@@ -67,6 +67,15 @@ export function loadConfig() {
       apiKey: process.env.LLM_API_KEY,
       model: process.env.LLM_MODEL,
     },
+    // Optional: CORE Memory integration for entity/statement extraction.
+    // When enabled, synth output is also pushed into CORE's episodic pipeline
+    // via its MCP Streamable HTTP endpoint. Missing env vars disable the feature.
+    core: {
+      mcpUrl: process.env.CORE_MCP_URL || '',
+      mcpToken: process.env.CORE_MCP_TOKEN || '',
+      enabled: !!(process.env.CORE_MCP_URL && process.env.CORE_MCP_TOKEN),
+      sessionId: null, // populated at runtime by worker
+    },
     worker: {
       pollIntervalMs: parseInt(process.env.WORKER_POLL_INTERVAL_MS, 10),
       batchSize: parseInt(process.env.WORKER_BATCH_SIZE, 10),
