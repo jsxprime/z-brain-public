@@ -22,6 +22,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import neo4j from 'neo4j-driver';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
@@ -40,6 +42,25 @@ function getDriver() {
     _driver = neo4j.driver(NEO4J_URI, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
   }
   return _driver;
+}
+
+// ─── OpenBrain MCP Client (SSE transport) ───────────────────────────────────
+
+let _openbrainClient = null;
+
+async function getOpenBrainClient() {
+  if (_openbrainClient) return _openbrainClient;
+
+  try {
+    const transport = new SSEClientTransport(new URL(`${OPENBRAIN_URL}/sse`));
+    const client = new Client({ name: 'recall-mcp', version: '1.0.0' });
+    await client.connect(transport);
+    _openbrainClient = client;
+    return client;
+  } catch (err) {
+    console.error('Failed to connect to OpenBrain MCP:', err.message);
+    return null;
+  }
 }
 
 // ─── CORE MCP Session Management ────────────────────────────────────────────
@@ -124,24 +145,42 @@ async function callCoreTool(toolName, toolArgs) {
 // ─── Layer Query Functions ──────────────────────────────────────────────────
 
 /**
- * Query OpenBrain for semantic thought search.
+ * Query OpenBrain for semantic thought search via MCP SSE client.
  */
 async function queryOpenBrain(query, limit) {
   try {
-    const response = await fetch(`${OPENBRAIN_URL}/search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, limit, threshold: 0.4 }),
+    const client = await getOpenBrainClient();
+    if (!client) return { results: [], error: 'Could not connect to OpenBrain MCP' };
+
+    const result = await client.callTool({
+      name: 'search',
+      arguments: { query, limit, threshold: 0.4 },
     });
 
-    if (!response.ok) return { results: [], error: `HTTP ${response.status}` };
+    const text = result?.content?.[0]?.text || '[]';
+    let thoughts;
+    try {
+      thoughts = JSON.parse(text);
+    } catch {
+      // Non-JSON response — wrap as single result
+      return {
+        results: text.length > 10 ? [{
+          content: text.slice(0, 2000),
+          type: 'thought',
+          source: 'openbrain',
+          domain: null,
+          score: null,
+          created_at: null,
+          id: null,
+        }] : [],
+        error: null,
+      };
+    }
 
-    const data = await response.json();
-    // OpenBrain returns an array of thought objects
-    const thoughts = Array.isArray(data) ? data : (data.results || []);
+    const items = Array.isArray(thoughts) ? thoughts : [];
 
     return {
-      results: thoughts.map((t) => ({
+      results: items.map((t) => ({
         content: t.content || '',
         type: extractType(t.content),
         source: 'openbrain',
