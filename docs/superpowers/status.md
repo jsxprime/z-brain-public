@@ -1,7 +1,7 @@
 # Z-Brain Superpowers Status
 
-> Last updated: 2026-06-10T20:47:00-04:00 (Session: ccbaa298)
-## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ FIXED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED | Fable 5 ✅ 6/10 ITEMS COMPLETE
+> Last updated: 2026-06-10T21:23:00-04:00 (Session: 2813cae8)
+## Current State — Healthy ✅ | Z-Brain Ecosystem LIVE 🧠 | CORE Pipeline ✅ RESTORED | Memory Search ✅ FIXED | synth-mcp ✅ FULLY OPERATIONAL | Hermes Desktop ✅ REMOTE ACCESS | Z-Brain Chronicle ✅ LAUNCHED | Hermes Native MCP ✅ DEPLOYED | Fable 5 ✅ 10/10 COMPLETE | Recall Facade ✅ LIVE
 
 ### Core Services
 - ✅ **CORE Memory Pipeline** — v0.7.15, running. Episode pipeline restored. Routing via `CHAT_PROVIDER=openai` + `OPENAI_BASE_URL` proxy to OpenRouter. See `docs/maintenance/core-version-tracking.md` for upgrade protection.
@@ -12,20 +12,22 @@
 - ✅ **synth-mcp** — FULLY OPERATIONAL. All 8 tools verified working.
 - ✅ **OpenBrain Server** — running at `core.zb.example.com`. **SDK migrated to @google/genai v1.0.**
 - ✅ **Memory Ingest / Search** — MCP tools working. **Neo4j: temporal relation fields deployed, `invalidate_relations` + `search_relations` tools added.**
-- ✅ **Synth→CORE Routing** — Worker dual-writes to OpenBrain (primary) + CORE episodic pipeline (secondary, best-effort via MCP Streamable HTTP).
-- ⚠️ **Synth Pipeline Stale** — Last processed event: June 4 (148h ago). The new freshness alarm correctly catches this. Likely needs new Zulip/Wiki.js events to resume processing. Not a bug — pipeline is idle due to no new source events.
+- ✅ **Synth→CORE Routing** — Worker dual-writes to OpenBrain (primary, **LLM-chosen domain**) + CORE episodic pipeline (secondary, best-effort via MCP Streamable HTTP).
+- ✅ **Recall Facade** — NEW. Standalone MCP server at `hermes-stack/mcp/recall/`. Fans out to OpenBrain (SSE), CORE (MCP HTTP), Neo4j (Bolt). Registered in Hermes config. IDE access via z-relay `zella_recall`.
+- ✅ **Daily Morning Brief** — Cron at `0 14 * * *` (10 AM EDT). Reads all memory layers, posts structured brief to Telegram + Pushover. Uses Claude Sonnet 4.
+- ⚠️ **Synth Pipeline Stale** — Last processed event: June 4 (148h ago). The freshness alarm correctly catches this. Likely needs new Zulip/Wiki.js events to resume processing. Not a bug — pipeline is idle due to no new source events.
 
 ### Z-Brain Ecosystem
 - ✅ **Traefik** — reverse proxy with Let's Encrypt wildcard cert for `*.zb.example.com` (Cloudflare DNS-01 challenge).
 - ✅ **Zulip** — chat at `chat.zb.example.com`. Topic-threaded. Outgoing webhooks → Synthesizer.
 - ✅ **Wiki.js** — wiki at `wiki.zb.example.com`. GraphQL poller → Synthesizer (5-min interval).
-- ✅ **Memory Synthesizer** — Node.js daemon at `synth.zb.example.com`. **Now with freshness alarm** (`/health/detailed` returns `isStale` when no event processed in 6+ hours). Health Check cron augmented to monitor and escalate via Pushover.
+- ✅ **Memory Synthesizer** — Node.js daemon at `synth.zb.example.com`. **Now with freshness alarm** (`/health/detailed` returns `isStale` when no event processed in 6+ hours). Health Check cron augmented to monitor and escalate via Pushover. **LLM now picks domain per memory from 13 available domains.**
 - ✅ **Z-Brain Dashboard** — Next.js control center at `dash.zb.example.com`.
 - ✅ **synth-postgres** — dedicated Postgres for Synthesizer (database: `synthesizer_db`).
 
 ### Container Inventory (22 containers on VM YOUR_VM_IP)
 | Stack | Containers |
-|-------|-----------|
+|-------|-----------| 
 | core-stack | core-app, core-postgres, core-redis, core-neo4j, openbrain-server |
 | hermes-stack | hermes-agent |
 | traefik | traefik |
@@ -56,11 +58,19 @@ Zulip message → Webhook → events table → Worker → [LLM Extraction] → O
 Wiki.js edit  → Poller  → events table ↗        (the only AI step)
 ```
 
-Everything from event capture to memory storage runs autonomously 24/7. The only AI model call is the extraction step. Worker now dual-writes to OpenBrain (primary, domain-tagged thoughts) and CORE (secondary, entity/statement extraction via MCP HTTP).
+Everything from event capture to memory storage runs autonomously 24/7. The only AI model call is the extraction step. Worker now dual-writes to OpenBrain (primary, LLM-chosen domain) and CORE (secondary, entity/statement extraction via MCP HTTP).
 
 ## Session Work Completed
 
-**Session ccbaa298 (Current — Fable 5 Tiers 1-3)**
+**Session 2813cae8 (Current — Fable 5 Items #3-#6 + LLM Domain)**
+Completed all remaining Fable 5 items. Commits: `8466271`, `f9c0ce8`, `3b4f980`.
+
+1. **#4 — Synth LLM-chosen domain + hardening:** `buildSystemPrompt(availableDomains)` replaces static `SYSTEM_PROMPT`. Worker fetches 13 domains from OpenBrain per batch. `openbrain.js` uses `memory.domain` with config fallback. Empty LLM content throws instead of returning `[]`.
+2. **#3 — Daily brief schedule fix:** Updated from `0 7 * * *` (3 AM EDT) to `0 14 * * *` (10 AM EDT). Manual test verified — all layers checked, Pushover sent.
+3. **#5 — Recall facade MCP server:** Standalone at `hermes-stack/mcp/recall/`. Fans out to OpenBrain (MCP SSE client), CORE (MCP Streamable HTTP), Neo4j (Bolt driver). Merge + dedup + rank. Registered in Hermes config.yaml. Z-relay wrapper `zella_recall` added. Verified all 3 layers returning results.
+4. **#6 — Session-start recall hook:** `z-cortex-session-sync` updated with recall step + decision-time capture convention. `z-brain-zella-comms` updated with `zella_recall` in tools table + startup checklist.
+
+**Session ccbaa298 (Fable 5 Tiers 1-3)**
 Resolved 6 of 10 Fable 5 architectural recommendations across three implementation tiers.
 
 **Tier 1+2 (commits: `3487ae7`):**
@@ -77,40 +87,19 @@ Resolved 6 of 10 Fable 5 architectural recommendations across three implementati
 
 ## 🔴 NEXT SESSION PRIORITY — READ FIRST
 
-### Fable 5 Tier 4 — Medium Lift (1 day)
+### Immediate — Low Hanging Fruit
 
-**#4 — Synth worker transaction restructure**
-- Move from single giant Postgres txn to claim→process→record pattern
-- Already partially done in session e90e6146 — verify current state matches the Fable 5 spec
-- Add idempotent OpenBrain commits using existing `idempotency_key` column (migration 003 already applied)
-- Make JSON parse failure retryable instead of silent completion
-- **Reference:** `docs/reports/claude/2026-06-10_fable5-memory-review.md` Q3 mechanical issues
+**DeepInfra model routing** — the operator requested: make DeepInfra the provider when Nemotron Super 3 is chosen. NOT STARTED.
 
-### Fable 5 Tier 5 — Strategic Features (days each)
+**Secret rotation** — `CORE_MCP_TOKEN` shares the same PAT as IDE MCP config. Plus 6 other secrets flagged for rotation.
 
-**#3 — Daily brief cron**
-- Morning cron that *reads* all memory layers (Neo4j, OpenBrain, CORE) and posts a summary brief to Telegram
-- The utilization multiplier — makes memory a daily read habit instead of write-only
-- Should include: yesterday's captures, open decisions, quarantine status, memory freshness
-- **Reference:** Fable 5 Q8 "daily heartbeat"
+### Strategic — Feature Work
 
-**#5 — Single `recall` facade tool**
-- New MCP tool that fans out to episodes/statements/graph/OpenBrain, deduplicates, returns ranked list with provenance tags
-- Highest-leverage remaining item for closing the "write-heavy, read-poor" gap
-- Even naive interleaving with provenance is a huge improvement
-- **Reference:** Fable 5 Q1 "Problem B"
+**Synth pipeline flow testing** — The pipeline has been idle for 148h (no new Zulip/Wiki events). Post a test message in Zulip, verify end-to-end: webhook → event table → extraction (with new LLM-chosen domain) → OpenBrain commit → CORE dual-write. This would be the first real test of the domain classification feature.
 
-**#6 — Session-start recall hook**
-- Auto-inject memory context at session start for coding agents
-- Fix z-relay MCP loading in Claude Code sessions first
-- Add decision-time capture convention ("when you make a decision, capture immediately")
-- **Reference:** Fable 5 Q4
+**Dashboard polish** — Use `impeccable` skill to refine the Z-Brain Dashboard UI at `dash.zb.example.com`.
 
-### Other Priorities (lower)
-- **DeepInfra model routing** — the operator requested: make DeepInfra the provider when Nemotron Super 3 is chosen. NOT STARTED.
-- **LLM-chosen domain field** — Add `domain` to extraction prompt so LLM classifies memories. the operator may want explicit domain override.
-- **Secret rotation** — `CORE_MCP_TOKEN` shares the same PAT as IDE MCP config. Plus 6 other secrets flagged for rotation.
-- **Dashboard polish** — use `impeccable` skill to refine the UI
+**Claude Code z-relay integration** — z-relay MCP doesn't load in Claude Code sessions. Needed for recall to reach all IDE agents.
 
 ### 📝 CONTENT PROJECT (flagged by user)
 - **Z-Brain Build Story** — Extract the full build journey into a blog post series or narrative. Raw material: conversation transcripts (JSONL), status.md session summaries, OpenBrain captures, artifacts. Follows the Meta-Content Cascade strategy from Slopthing.
